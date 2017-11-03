@@ -7,6 +7,11 @@ parsed format. It is used in the MKV Video container format.
 #[macro_use]
 extern crate error_chain;
 
+extern crate byteorder;
+
 pub mod error;
 pub mod primitives;
 pub mod io;
+
+#[cfg(test)]
+mod tests;
