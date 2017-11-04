@@ -3,9 +3,9 @@ This module contains the functionality to read/write EBML elements
 to/from an I/O Reader/Writer.
 */
 
-use std::io::Read;
+use std::io::{Read, Write};
 
-use error::Result;
+use error::{ErrorKind, Result};
 use primitives::VInt;
 
 /// Trait that will be implemented for every implementor of io::Read, so that it is easy to read
@@ -64,9 +64,59 @@ impl<T: Read + ?Sized> ReadEbml for T {
             value |= (buf[i] as i64) << ((len - i - 1) * 8);
         }
 
-        Ok(VInt {
-            length: len,
-            value: value,
-        })
+        Ok(VInt { value: value })
+    }
+}
+
+/// Trait that will be implemented for every implementor of io::Write, so that it is easy to write
+/// EBML elements to any kind of output.
+pub trait WriteEbml {
+    /// Write a VINT (Variable Length Integer).
+    fn write_vint(&mut self, vint: VInt) -> Result<()>;
+}
+
+// Implement the WriteEbml trait for all io::Write-ers.
+impl<T: Write + ?Sized> WriteEbml for T {
+    fn write_vint(&mut self, vint: VInt) -> Result<()> {
+        let value = vint.value();
+
+        let mask;
+        let len;
+
+        if (value >> 55) != 0 {
+            len = 8;
+            mask = 0x01;
+        } else if (value >> 47) != 0 {
+            len = 7;
+            mask = 0x02;
+        } else if (value >> 39) != 0 {
+            len = 6;
+            mask = 0x04;
+        } else if (value >> 31) != 0 {
+            len = 5;
+            mask = 0x08;
+        } else if (value >> 23) != 0 {
+            len = 4;
+            mask = 0x10;
+        } else if (value >> 15) != 0 {
+            len = 3;
+            mask = 0x20;
+        } else if (value >> 7) != 0 {
+            len = 2;
+            mask = 0x40;
+        } else {
+            len = 1;
+            mask = 0x80;
+        }
+
+        let mut buf = vec![0u8; len];
+        for i in 0..len {
+            buf[i] = (value >> ((len - i - 1) * 8)) as u8;
+        }
+
+        buf[0] |= mask;
+
+        self.write(buf.as_ref())?;
+        Ok(())
     }
 }

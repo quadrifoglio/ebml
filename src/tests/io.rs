@@ -2,7 +2,8 @@
 
 use std::io::Cursor;
 
-use io::ReadEbml;
+use primitives::VInt;
+use io::{ReadEbml, WriteEbml};
 
 #[test]
 fn read_vint_one_octet() {
@@ -32,4 +33,34 @@ fn read_vint_eight_octets() {
         .unwrap();
 
     assert_eq!(26825447621627410, vint.value());
+}
+
+#[test]
+fn write_vint_one_octet() {
+    let vint = VInt::new(10);
+
+    let mut buf = Vec::with_capacity(1);
+    buf.write_vint(vint).unwrap();
+
+    assert_eq!(vec![0x8a], buf);
+}
+
+#[test]
+fn write_vint_three_octets() {
+    let vint = VInt::new(1253162);
+
+    let mut buf = Vec::with_capacity(3);
+    buf.write_vint(vint).unwrap();
+
+    assert_eq!(vec![0x33, 0x1f, 0x2a], buf);
+}
+
+#[test]
+fn write_vint_seven_octets() {
+    let vint = VInt::new(562949953421160);
+
+    let mut buf = Vec::with_capacity(3);
+    buf.write_vint(vint).unwrap();
+
+    assert_eq!(vec![0x03, 0xff, 0xff, 0xff, 0xff, 0xff, 0x68], buf);
 }
