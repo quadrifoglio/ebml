@@ -80,33 +80,30 @@ impl<T: Write + ?Sized> WriteEbml for T {
     fn write_vint(&mut self, vint: VInt) -> Result<()> {
         let value = vint.value();
 
-        let mask;
-        let len;
+        let mut mask = 0x80;
+        let mut len = 1;
 
-        if (value >> 55) != 0 {
+        if value >> 49 != 0 {
             len = 8;
             mask = 0x01;
-        } else if (value >> 47) != 0 {
+        } else if value >> 42 != 0 {
             len = 7;
             mask = 0x02;
-        } else if (value >> 39) != 0 {
+        } else if value >> 35 != 0 {
             len = 6;
             mask = 0x04;
-        } else if (value >> 31) != 0 {
+        } else if value >> 28 != 0 {
             len = 5;
             mask = 0x08;
-        } else if (value >> 23) != 0 {
+        } else if value >> 21 != 0 {
             len = 4;
             mask = 0x10;
-        } else if (value >> 15) != 0 {
+        } else if value >> 14 != 0 {
             len = 3;
             mask = 0x20;
-        } else if (value >> 7) != 0 {
+        } else if value >> 7 != 0 {
             len = 2;
             mask = 0x40;
-        } else {
-            len = 1;
-            mask = 0x80;
         }
 
         let mut buf = vec![0u8; len];
