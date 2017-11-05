@@ -5,19 +5,18 @@ to/from an I/O Reader/Writer.
 
 use std::io::{Read, Write};
 
-use error::{ErrorKind, Result};
-use primitives::VInt;
+use error::Result;
 
 /// Trait that will be implemented for every implementor of io::Read, so that it is easy to read
 /// EBML elements from any kind of input.
 pub trait ReadEbml {
     /// Read a VINT (Variable Length Integer).
-    fn read_vint(&mut self) -> Result<VInt>;
+    fn read_vint(&mut self) -> Result<i64>;
 }
 
 // Implement the ReadEbml trait for all io::Read-ers.
 impl<T: Read + ?Sized> ReadEbml for T {
-    fn read_vint(&mut self) -> Result<VInt> {
+    fn read_vint(&mut self) -> Result<i64> {
         let mut buf = [0u8; 1];
         self.read(&mut buf)?;
 
@@ -64,7 +63,7 @@ impl<T: Read + ?Sized> ReadEbml for T {
             value |= (buf[i] as i64) << ((len - i - 1) * 8);
         }
 
-        Ok(VInt { value: value })
+        Ok(value)
     }
 }
 
@@ -72,14 +71,12 @@ impl<T: Read + ?Sized> ReadEbml for T {
 /// EBML elements to any kind of output.
 pub trait WriteEbml {
     /// Write a VINT (Variable Length Integer).
-    fn write_vint(&mut self, vint: VInt) -> Result<()>;
+    fn write_vint(&mut self, value: i64) -> Result<()>;
 }
 
 // Implement the WriteEbml trait for all io::Write-ers.
 impl<T: Write + ?Sized> WriteEbml for T {
-    fn write_vint(&mut self, vint: VInt) -> Result<()> {
-        let value = vint.value();
-
+    fn write_vint(&mut self, value: i64) -> Result<()> {
         let mut mask = 0x80;
         let mut len = 1;
 
