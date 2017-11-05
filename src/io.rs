@@ -142,12 +142,27 @@ impl<T: Read + ?Sized> ReadEbml for T {
 /// EBML elements to any kind of output.
 pub trait WriteEbml {
     /// Write a VINT (Variable Length Integer).
-    fn write_vint(&mut self, value: i64) -> Result<()>;
+    fn write_ebml_vint(&mut self, value: i64) -> Result<()>;
+
+    /// Write EBML binary data.
+    fn write_ebml_data(&mut self, value: Vec<u8>) -> Result<()>;
+
+    /// Write an EBML signed integer.
+    fn write_ebml_signed_int(&mut self, value: i64) -> Result<()>;
+
+    /// Write an EBML unsigned integer.
+    fn write_ebml_unsigned_int(&mut self, value: u64) -> Result<()>;
+
+    /// Write an EBML float.
+    fn write_ebml_float(&mut self, value: f64) -> Result<()>;
+
+    /// Write an EBML UTF-8 string.
+    fn write_ebml_utf8(&mut self, value: String) -> Result<()>;
 }
 
 // Implement the WriteEbml trait for all io::Write-ers.
 impl<T: Write + ?Sized> WriteEbml for T {
-    fn write_vint(&mut self, value: i64) -> Result<()> {
+    fn write_ebml_vint(&mut self, value: i64) -> Result<()> {
         let mut mask = 0x80;
         let mut len = 1;
 
@@ -182,6 +197,35 @@ impl<T: Write + ?Sized> WriteEbml for T {
         buf[0] |= mask;
 
         self.write(buf.as_ref())?;
+        Ok(())
+    }
+
+    fn write_ebml_data(&mut self, value: Vec<u8>) -> Result<()> {
+        self.write_ebml_vint(value.len() as i64)?;
+        self.write(value.as_ref())?;
+
+        Ok(())
+    }
+
+    fn write_ebml_signed_int(&mut self, value: i64) -> Result<()> {
+        // TODO
+        Ok(())
+    }
+
+    fn write_ebml_unsigned_int(&mut self, value: u64) -> Result<()> {
+        // TODO
+        Ok(())
+    }
+
+    fn write_ebml_float(&mut self, value: f64) -> Result<()> {
+        // TODO
+        Ok(())
+    }
+
+    fn write_ebml_utf8(&mut self, value: String) -> Result<()> {
+        self.write_ebml_vint(value.len() as i64)?;
+        self.write(value.as_ref())?;
+
         Ok(())
     }
 }
