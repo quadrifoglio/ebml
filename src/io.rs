@@ -83,8 +83,8 @@ impl<T: Read + ?Sized> ReadEbml for T {
     }
 
     fn read_ebml_data(&mut self) -> Result<EbmlValue> {
-        let size = self.read_ebml_vint()?;
-        let mut data = Vec::with_capacity(size as usize);
+        let size = self.read_ebml_vint()? as usize;
+        let mut data = vec![0u8; size];
 
         self.read(&mut data)?;
         Ok(EbmlValue::Binary(data))
@@ -92,7 +92,7 @@ impl<T: Read + ?Sized> ReadEbml for T {
 
     fn read_ebml_signed_int(&mut self) -> Result<EbmlValue> {
         let size = self.read_ebml_vint()? as usize;
-        let mut data = Vec::with_capacity(size);
+        let mut data = vec![0u8; size];
 
         self.read(&mut data)?;
 
@@ -106,7 +106,7 @@ impl<T: Read + ?Sized> ReadEbml for T {
 
     fn read_ebml_unsigned_int(&mut self) -> Result<EbmlValue> {
         let size = self.read_ebml_vint()? as usize;
-        let mut data = Vec::with_capacity(size);
+        let mut data = vec![0u8; size];
 
         self.read(&mut data)?;
 
@@ -130,7 +130,7 @@ impl<T: Read + ?Sized> ReadEbml for T {
 
     fn read_ebml_utf8(&mut self) -> Result<EbmlValue> {
         let size = self.read_ebml_vint()? as usize;
-        let mut data = Vec::with_capacity(size);
+        let mut data = vec![0u8; size];
 
         self.read(&mut data)?;
 
