@@ -5,18 +5,34 @@ to/from an I/O Reader/Writer.
 
 use std::io::{Read, Write};
 
+use Value as EbmlValue;
 use error::Result;
 
 /// Trait that will be implemented for every implementor of io::Read, so that it is easy to read
 /// EBML elements from any kind of input.
 pub trait ReadEbml {
     /// Read a VINT (Variable Length Integer).
-    fn read_vint(&mut self) -> Result<i64>;
+    fn read_ebml_vint(&mut self) -> Result<i64>;
+
+    /// Read EBML binary data.
+    fn read_ebml_data(&mut self) -> Result<EbmlValue>;
+
+    /// Read an EBML signed integer.
+    fn read_ebml_signed_int(&mut self) -> Result<EbmlValue>;
+
+    /// Read an EBML unsigned integer.
+    fn read_ebml_unsigned_int(&mut self) -> Result<EbmlValue>;
+
+    /// Read an EBML float.
+    fn read_ebml_float(&mut self) -> Result<EbmlValue>;
+
+    /// Read an EBML UTF-8 string.
+    fn read_ebml_utf8(&mut self) -> Result<EbmlValue>;
 }
 
 // Implement the ReadEbml trait for all io::Read-ers.
 impl<T: Read + ?Sized> ReadEbml for T {
-    fn read_vint(&mut self) -> Result<i64> {
+    fn read_ebml_vint(&mut self) -> Result<i64> {
         let mut buf = [0u8; 1];
         self.read(&mut buf)?;
 
@@ -64,6 +80,61 @@ impl<T: Read + ?Sized> ReadEbml for T {
         }
 
         Ok(value)
+    }
+
+    fn read_ebml_data(&mut self) -> Result<EbmlValue> {
+        let size = self.read_ebml_vint()?;
+        let mut data = Vec::with_capacity(size as usize);
+
+        self.read(&mut data)?;
+        Ok(EbmlValue::Binary(data))
+    }
+
+    fn read_ebml_signed_int(&mut self) -> Result<EbmlValue> {
+        let size = self.read_ebml_vint()? as usize;
+        let mut data = Vec::with_capacity(size);
+
+        self.read(&mut data)?;
+
+        let mut value = 0 as i64;
+        for i in 0..size {
+            value |= (data[i] as i64) << ((size - i - 1) * 8);
+        }
+
+        Ok(EbmlValue::SignedInteger(value))
+    }
+
+    fn read_ebml_unsigned_int(&mut self) -> Result<EbmlValue> {
+        let size = self.read_ebml_vint()? as usize;
+        let mut data = Vec::with_capacity(size);
+
+        self.read(&mut data)?;
+
+        let mut value = 0 as u64;
+        for i in 0..size {
+            value |= (data[i] as u64) << ((size - i - 1) * 8);
+        }
+
+        Ok(EbmlValue::UnsignedInteger(value))
+    }
+
+    fn read_ebml_float(&mut self) -> Result<EbmlValue> {
+        let value = self.read_ebml_unsigned_int()?;
+
+        if let EbmlValue::UnsignedInteger(bits) = value {
+            Ok(EbmlValue::Float(f64::from_bits(bits)))
+        } else {
+            panic!("unexpected value: read_ebml_unsigned_int did not return the expected variant");
+        }
+    }
+
+    fn read_ebml_utf8(&mut self) -> Result<EbmlValue> {
+        let size = self.read_ebml_vint()? as usize;
+        let mut data = Vec::with_capacity(size);
+
+        self.read(&mut data)?;
+
+        Ok(EbmlValue::Utf8(String::from_utf8(data)?))
     }
 }
 

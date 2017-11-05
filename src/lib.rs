@@ -16,13 +16,12 @@ pub mod io;
 pub type ElementId = i64;
 
 /// Represents all the EBML data types available.
-pub enum Data {
+pub enum Value {
     Master(Vec<Element>),
     Binary(Vec<u8>),
     SignedInteger(i64),
     UnsignedInteger(u64),
-    Float32(f32),
-    Float64(f32),
+    Float(f64),
     Utf8(String),
     Date(i64),
 }
@@ -31,12 +30,12 @@ pub enum Data {
 pub struct Element {
     id: ElementId,
     size: usize,
-    data: Data,
+    data: Value,
 }
 
 impl Element {
     /// Create a new EBML Element.
-    pub fn new(id: ElementId, size: usize, data: Data) -> Element {
+    pub fn new(id: ElementId, size: usize, data: Value) -> Element {
         Element {
             id: id,
             size: size,
@@ -47,7 +46,7 @@ impl Element {
     /// Check is this element is a Master element (i.e. contains other child elements).
     pub fn is_master(&self) -> bool {
         match self.data {
-            Data::Master(_) => true,
+            Value::Master(_) => true,
             _ => false,
         }
     }
@@ -55,7 +54,7 @@ impl Element {
     /// Return a reference to the element's children, if it has any (i.e. if it is a master
     /// element).
     pub fn children<'a>(&'a self) -> Option<&'a Vec<Element>> {
-        if let Data::Master(ref children) = self.data {
+        if let Value::Master(ref children) = self.data {
             Some(children)
         } else {
             None
@@ -73,7 +72,7 @@ impl Element {
     }
 
     /// Get a reference to the element's data.
-    pub fn data<'a>(&'a self) -> &'a Data {
+    pub fn data<'a>(&'a self) -> &'a Value {
         &self.data
     }
 }
