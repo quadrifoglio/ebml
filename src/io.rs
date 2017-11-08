@@ -5,227 +5,131 @@ to/from an I/O Reader/Writer.
 
 use std::io::{Read, Write};
 
-use Value as EbmlValue;
+use Element;
 use error::Result;
 
 /// Trait that will be implemented for every implementor of io::Read, so that it is easy to read
 /// EBML elements from any kind of input.
 pub trait ReadEbml {
-    /// Read a VINT (Variable Length Integer).
-    fn read_ebml_vint(&mut self) -> Result<i64>;
-
-    /// Read EBML binary data.
-    fn read_ebml_data(&mut self) -> Result<EbmlValue>;
-
-    /// Read an EBML signed integer.
-    fn read_ebml_signed_int(&mut self) -> Result<EbmlValue>;
-
-    /// Read an EBML unsigned integer.
-    fn read_ebml_unsigned_int(&mut self) -> Result<EbmlValue>;
-
-    /// Read an EBML float.
-    fn read_ebml_float(&mut self) -> Result<EbmlValue>;
-
-    /// Read an EBML UTF-8 string.
-    fn read_ebml_utf8(&mut self) -> Result<EbmlValue>;
+    /// Read an EBML Element.
+    fn read_ebml_element(&mut self) -> Result<Element>;
 }
 
 // Implement the ReadEbml trait for all io::Read-ers.
 impl<T: Read + ?Sized> ReadEbml for T {
-    fn read_ebml_vint(&mut self) -> Result<i64> {
-        let mut buf = [0u8; 1];
-        self.read(&mut buf)?;
+    fn read_ebml_element(&mut self) -> Result<Element> {
+        let id = read_variable_size_integer(self)?;
+        let size = read_variable_size_integer(self)? as usize;
 
-        let num = buf[0];
-        let mut mask = 0x00;
-        let mut len = 1 as usize;
-
-        if (num & 0x80) != 0 {
-            len = 1;
-            mask = 0x7f;
-        } else if (num & 0x40) != 0 {
-            len = 2;
-            mask = 0x3f;
-        } else if (num & 0x20) != 0 {
-            len = 3;
-            mask = 0x1f;
-        } else if (num & 0x10) != 0 {
-            len = 4;
-            mask = 0x0f;
-        } else if (num & 0x08) != 0 {
-            len = 5;
-            mask = 0x07;
-        } else if (num & 0x04) != 0 {
-            len = 6;
-            mask = 0x03;
-        } else if (num & 0x02) != 0 {
-            len = 7;
-            mask = 0x01;
-        } else if (num & 0x01) != 0 {
-            len = 8;
-            mask = 0x00;
-        }
-
-        let mut value = 0 as i64;
-
-        let mut buf = vec![0u8; len];
-        buf[0] = num & mask;
-
-        if len > 1 {
-            self.read(&mut buf[1..])?;
-        }
-
-        for i in 0..len {
-            value |= (buf[i] as i64) << ((len - i - 1) * 8);
-        }
-
-        Ok(value)
-    }
-
-    fn read_ebml_data(&mut self) -> Result<EbmlValue> {
-        let size = self.read_ebml_vint()? as usize;
         let mut data = vec![0u8; size];
-
-        self.read(&mut data)?;
-        Ok(EbmlValue::Binary(data))
-    }
-
-    fn read_ebml_signed_int(&mut self) -> Result<EbmlValue> {
-        let size = self.read_ebml_vint()? as usize;
-        let mut data = vec![0u8; size];
-
         self.read(&mut data)?;
 
-        let mut value = 0 as i64;
-        for i in 0..size {
-            value |= (data[i] as i64) << ((size - i - 1) * 8);
-        }
-
-        Ok(EbmlValue::SignedInteger(value))
-    }
-
-    fn read_ebml_unsigned_int(&mut self) -> Result<EbmlValue> {
-        let size = self.read_ebml_vint()? as usize;
-        let mut data = vec![0u8; size];
-
-        self.read(&mut data)?;
-
-        let mut value = 0 as u64;
-        for i in 0..size {
-            value |= (data[i] as u64) << ((size - i - 1) * 8);
-        }
-
-        Ok(EbmlValue::UnsignedInteger(value))
-    }
-
-    fn read_ebml_float(&mut self) -> Result<EbmlValue> {
-        let value = self.read_ebml_unsigned_int()?;
-
-        if let EbmlValue::UnsignedInteger(bits) = value {
-            Ok(EbmlValue::Float(f64::from_bits(bits)))
-        } else {
-            panic!("unexpected value: read_ebml_unsigned_int did not return the expected variant");
-        }
-    }
-
-    fn read_ebml_utf8(&mut self) -> Result<EbmlValue> {
-        let size = self.read_ebml_vint()? as usize;
-        let mut data = vec![0u8; size];
-
-        self.read(&mut data)?;
-
-        Ok(EbmlValue::Utf8(String::from_utf8(data)?))
+        Ok(Element { id: id, data: data })
     }
 }
 
 /// Trait that will be implemented for every implementor of io::Write, so that it is easy to write
 /// EBML elements to any kind of output.
 pub trait WriteEbml {
-    /// Write a VINT (Variable Length Integer).
-    fn write_ebml_vint(&mut self, value: i64) -> Result<()>;
-
-    /// Write EBML binary data.
-    fn write_ebml_data(&mut self, value: Vec<u8>) -> Result<()>;
-
-    /// Write an EBML signed integer.
-    fn write_ebml_signed_int(&mut self, value: i64) -> Result<()>;
-
-    /// Write an EBML unsigned integer.
-    fn write_ebml_unsigned_int(&mut self, value: u64) -> Result<()>;
-
-    /// Write an EBML float.
-    fn write_ebml_float(&mut self, value: f64) -> Result<()>;
-
-    /// Write an EBML UTF-8 string.
-    fn write_ebml_utf8(&mut self, value: String) -> Result<()>;
+    /// Write an EBML Element.
+    fn write_ebml_element(&mut self, elem: Element) -> Result<()>;
 }
 
 // Implement the WriteEbml trait for all io::Write-ers.
 impl<T: Write + ?Sized> WriteEbml for T {
-    fn write_ebml_vint(&mut self, value: i64) -> Result<()> {
-        let mut mask = 0x80;
-        let mut len = 1;
+    fn write_ebml_element(&mut self, elem: Element) -> Result<()> {
+        write_variable_size_integer(self, elem.id)?;
+        write_variable_size_integer(self, elem.data.len() as i64)?;
 
-        if value >> 49 != 0 {
-            len = 8;
-            mask = 0x01;
-        } else if value >> 42 != 0 {
-            len = 7;
-            mask = 0x02;
-        } else if value >> 35 != 0 {
-            len = 6;
-            mask = 0x04;
-        } else if value >> 28 != 0 {
-            len = 5;
-            mask = 0x08;
-        } else if value >> 21 != 0 {
-            len = 4;
-            mask = 0x10;
-        } else if value >> 14 != 0 {
-            len = 3;
-            mask = 0x20;
-        } else if value >> 7 != 0 {
-            len = 2;
-            mask = 0x40;
-        }
-
-        let mut buf = vec![0u8; len];
-        for i in 0..len {
-            buf[i] = (value >> ((len - i - 1) * 8)) as u8;
-        }
-
-        buf[0] |= mask;
-
-        self.write(buf.as_ref())?;
+        self.write(elem.data.as_ref())?;
         Ok(())
     }
+}
 
-    fn write_ebml_data(&mut self, value: Vec<u8>) -> Result<()> {
-        self.write_ebml_vint(value.len() as i64)?;
-        self.write(value.as_ref())?;
+fn read_variable_size_integer<R: Read + ?Sized>(r: &mut R) -> Result<i64> {
+    let mut buf = [0u8; 1];
+    r.read(&mut buf)?;
 
-        Ok(())
+    let num = buf[0];
+    let mut mask = 0x00;
+    let mut len = 1 as usize;
+
+    if (num & 0x80) != 0 {
+        len = 1;
+        mask = 0x7f;
+    } else if (num & 0x40) != 0 {
+        len = 2;
+        mask = 0x3f;
+    } else if (num & 0x20) != 0 {
+        len = 3;
+        mask = 0x1f;
+    } else if (num & 0x10) != 0 {
+        len = 4;
+        mask = 0x0f;
+    } else if (num & 0x08) != 0 {
+        len = 5;
+        mask = 0x07;
+    } else if (num & 0x04) != 0 {
+        len = 6;
+        mask = 0x03;
+    } else if (num & 0x02) != 0 {
+        len = 7;
+        mask = 0x01;
+    } else if (num & 0x01) != 0 {
+        len = 8;
+        mask = 0x00;
     }
 
-    fn write_ebml_signed_int(&mut self, value: i64) -> Result<()> {
-        // TODO
-        Ok(())
+    let mut value = 0 as i64;
+
+    let mut buf = vec![0u8; len];
+    buf[0] = num & mask;
+
+    if len > 1 {
+        r.read(&mut buf[1..])?;
     }
 
-    fn write_ebml_unsigned_int(&mut self, value: u64) -> Result<()> {
-        // TODO
-        Ok(())
+    for i in 0..len {
+        value |= (buf[i] as i64) << ((len - i - 1) * 8);
     }
 
-    fn write_ebml_float(&mut self, value: f64) -> Result<()> {
-        // TODO
-        Ok(())
+    Ok(value)
+}
+
+fn write_variable_size_integer<W: Write + ?Sized>(w: &mut W, value: i64) -> Result<()> {
+    let mut mask = 0x80;
+    let mut len = 1;
+
+    if value >> 49 != 0 {
+        len = 8;
+        mask = 0x01;
+    } else if value >> 42 != 0 {
+        len = 7;
+        mask = 0x02;
+    } else if value >> 35 != 0 {
+        len = 6;
+        mask = 0x04;
+    } else if value >> 28 != 0 {
+        len = 5;
+        mask = 0x08;
+    } else if value >> 21 != 0 {
+        len = 4;
+        mask = 0x10;
+    } else if value >> 14 != 0 {
+        len = 3;
+        mask = 0x20;
+    } else if value >> 7 != 0 {
+        len = 2;
+        mask = 0x40;
     }
 
-    fn write_ebml_utf8(&mut self, value: String) -> Result<()> {
-        self.write_ebml_vint(value.len() as i64)?;
-        self.write(value.as_ref())?;
-
-        Ok(())
+    let mut buf = vec![0u8; len];
+    for i in 0..len {
+        buf[i] = (value >> ((len - i - 1) * 8)) as u8;
     }
+
+    buf[0] |= mask;
+    w.write(buf.as_ref())?;
+
+    Ok(())
 }

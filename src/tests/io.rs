@@ -2,143 +2,52 @@
 
 use std::io::Cursor;
 
-use Value;
+use Element;
 use io::{ReadEbml, WriteEbml};
 
 #[test]
-fn vint_one_octet() {
-    let data = vec![0x8a]; // 10
-    let vint = Cursor::new(data.clone()).read_ebml_vint().unwrap();
-
-    assert_eq!(10, vint);
-
-    let mut buf = Vec::with_capacity(1);
-    buf.write_ebml_vint(vint).unwrap();
-
-    assert_eq!(data, buf);
-}
-
-#[test]
-fn vint_two_octets() {
-    let data = vec![0x49, 0xfc]; // 2556
-    let vint = Cursor::new(data.clone()).read_ebml_vint().unwrap();
-
-    assert_eq!(2556, vint);
-
-    let mut buf = Vec::with_capacity(2);
-    buf.write_ebml_vint(vint).unwrap();
-
-    assert_eq!(data, buf);
-}
-
-#[test]
-fn vint_three_octets() {
-    let data = vec![0x33, 0x1f, 0x2a]; // 1253162
-    let vint = Cursor::new(data.clone()).read_ebml_vint().unwrap();
-
-    assert_eq!(1253162, vint);
+fn element_write_with_data_one_octet() {
+    let data = vec![0xaa, 0x81, 10];
+    let elem = Element::new(42, vec![10]);
 
     let mut buf = Vec::with_capacity(3);
-    buf.write_ebml_vint(vint).unwrap();
+    buf.write_ebml_element(elem).unwrap();
 
     assert_eq!(data, buf);
 }
 
 #[test]
-fn vint_four_octets() {
-    let data = vec![0x12, 0x87, 0x57, 0xb2]; // 42424242
-    let vint = Cursor::new(data.clone()).read_ebml_vint().unwrap();
+fn element_read_with_data_one_octet() {
+    let mut data = Cursor::new(vec![0xaa, 0x81, 10]);
+    let elem = data.read_ebml_element().unwrap();
 
-    assert_eq!(42424242, vint);
+    assert_eq!(42, elem.id());
+    assert_eq!(1, elem.size());
+    assert_eq!(&vec![10], elem.data());
+}
 
-    let mut buf = Vec::with_capacity(4);
-    buf.write_ebml_vint(vint).unwrap();
+#[test]
+fn element_write_with_data_one_megs() {
+    let mut data = vec![0xaa, 0x30, 0x00, 0x00];
+    data.extend(vec![42u8; 0x100000]); // 1 MiB of data
+
+    let elem = Element::new(42, vec![42u8; 0x100000]);
+
+    let mut buf = Vec::with_capacity(3);
+    buf.write_ebml_element(elem).unwrap();
 
     assert_eq!(data, buf);
 }
 
 #[test]
-fn vint_five_octets() {
-    let data = vec![0x0f, 0xff, 0xff, 0xff, 0xd4]; // 34359738324
-    let vint = Cursor::new(data.clone()).read_ebml_vint().unwrap();
+fn element_read_with_data_one_megs() {
+    let mut data = vec![0xaa, 0x30, 0x00, 0x00];
+    data.extend(vec![42u8; 0x100000]); // 1 MiB of data
 
-    assert_eq!(34359738324, vint);
+    let mut data = Cursor::new(data);
+    let elem = data.read_ebml_element().unwrap();
 
-    let mut buf = Vec::with_capacity(5);
-    buf.write_ebml_vint(vint).unwrap();
-
-    assert_eq!(data, buf);
-}
-
-#[test]
-fn vint_six_octets() {
-    let data = vec![0x07, 0xff, 0xff, 0xff, 0xfe, 0x59]; // 4398046510681
-    let vint = Cursor::new(data.clone()).read_ebml_vint().unwrap();
-
-    assert_eq!(4398046510681, vint);
-
-    let mut buf = Vec::with_capacity(6);
-    buf.write_ebml_vint(vint).unwrap();
-
-    assert_eq!(data, buf);
-}
-
-#[test]
-fn vint_seven_octets() {
-    let data = vec![0x03, 0xff, 0xff, 0xff, 0xff, 0xff, 0x68]; // 562949953421160
-    let vint = Cursor::new(data.clone()).read_ebml_vint().unwrap();
-
-    assert_eq!(562949953421160, vint);
-
-    let mut buf = Vec::with_capacity(6);
-    buf.write_ebml_vint(vint).unwrap();
-
-    assert_eq!(data, buf);
-}
-
-#[test]
-fn vint_eight_octets() {
-    let data = vec![0x01, 0x5f, 0x4d, 0x9a, 0x3c, 0x6d, 0x8e, 0x12]; // 26825447621627410
-    let vint = Cursor::new(data.clone()).read_ebml_vint().unwrap();
-
-    assert_eq!(26825447621627410, vint);
-
-    let mut buf = Vec::with_capacity(6);
-    buf.write_ebml_vint(vint).unwrap();
-
-    assert_eq!(data, buf);
-}
-
-#[test]
-fn ebml_binary_data() {
-    let data = vec![42, 1, 241, 0, 128];
-
-    let mut buf = Vec::with_capacity(6);
-    buf.write_ebml_data(data.clone()).unwrap();
-
-    let mut rdr = Cursor::new(buf);
-    let res = rdr.read_ebml_data().unwrap();
-
-    if let Value::Binary(res) = res {
-        assert_eq!(data, res);
-    } else {
-        panic!("expected Value::Binary variant");
-    }
-}
-
-#[test]
-fn ebml_utf8() {
-    let data = String::from("Hello World !");
-
-    let mut buf = Vec::with_capacity(14);
-    buf.write_ebml_utf8(data.clone()).unwrap();
-
-    let mut rdr = Cursor::new(buf);
-    let res = rdr.read_ebml_utf8().unwrap();
-
-    if let Value::Utf8(res) = res {
-        assert_eq!(data, res);
-    } else {
-        panic!("expected Value::Utf8 variant");
-    }
+    assert_eq!(42, elem.id());
+    assert_eq!(0x100000, elem.size());
+    assert_eq!(&vec![42u8; 0x100000], elem.data());
 }
