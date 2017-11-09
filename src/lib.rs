@@ -14,40 +14,37 @@ pub mod io;
 
 use error::Result;
 
-/// Type alias for the EBML Element ID.
-pub type ElementId = i64;
-
-/// Represents all the EBML data types available.
-pub enum ElementKind {
-    Master,
-    Binary,
-    SignedInteger,
-    UnsignedInteger,
-    Float,
-    Utf8,
-    Date,
+/// Contains all the information about an EBML element.
+pub struct ElementInfo {
+    id: i64,
+    size: usize,
 }
 
 /// Represents an EBML Element.
 pub struct Element {
-    id: ElementId,
+    info: ElementInfo,
     data: Vec<u8>,
 }
 
 impl Element {
     /// Create a new EBML Element.
-    pub fn new(id: ElementId, data: Vec<u8>) -> Element {
-        Element { id: id, data: data }
+    pub fn new(mut info: ElementInfo, data: Vec<u8>) -> Element {
+        info.size = data.len();
+
+        Element {
+            info: info,
+            data: data,
+        }
     }
 
     /// Get the EBML Element ID.
-    pub fn id(&self) -> ElementId {
-        self.id
+    pub fn id(&self) -> i64 {
+        self.info.id
     }
 
     /// Get the size of the data contained withing the element.
     pub fn size(&self) -> usize {
-        self.data.len()
+        self.info.size
     }
 
     /// Get a reference to the element's data.
@@ -77,7 +74,7 @@ impl Element {
         f32::from_bits(self.get_data_i64() as u32)
     }
 
-    /// Consume the element and return its data as a floating point number.
+    /// Consume the element and return its data as a 64-bits floating point number.
     pub fn get_data_f64(self) -> f64 {
         f64::from_bits(self.get_data_i64() as u64)
     }

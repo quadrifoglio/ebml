@@ -5,43 +5,64 @@ to/from an I/O Reader/Writer.
 
 use std::io::{Read, Write};
 
-use Element;
+use super::{Element, ElementInfo};
 use error::Result;
 
 /// Trait that will be implemented for every implementor of io::Read, so that it is easy to read
 /// EBML elements from any kind of input.
 pub trait ReadEbml {
-    /// Read an EBML Element.
+    /// Read an entire EBML Element.
     fn read_ebml_element(&mut self) -> Result<Element>;
+
+    /// Read EBML element information, but without reading all the element's data.
+    fn read_ebml_element_info(&mut self) -> Result<ElementInfo>;
 }
 
 // Implement the ReadEbml trait for all io::Read-ers.
 impl<T: Read + ?Sized> ReadEbml for T {
     fn read_ebml_element(&mut self) -> Result<Element> {
+        let info = self.read_ebml_element_info()?;
+
+        let mut data = vec![0u8; info.size];
+        self.read(&mut data)?;
+
+        Ok(Element {
+            info: info,
+            data: data,
+        })
+    }
+
+    fn read_ebml_element_info(&mut self) -> Result<ElementInfo> {
         let id = read_variable_size_integer(self)?;
         let size = read_variable_size_integer(self)? as usize;
 
-        let mut data = vec![0u8; size];
-        self.read(&mut data)?;
-
-        Ok(Element { id: id, data: data })
+        Ok(ElementInfo { id: id, size: size })
     }
 }
 
 /// Trait that will be implemented for every implementor of io::Write, so that it is easy to write
 /// EBML elements to any kind of output.
 pub trait WriteEbml {
-    /// Write an EBML Element.
+    /// Write an entire EBML Element.
     fn write_ebml_element(&mut self, elem: Element) -> Result<()>;
+
+    /// Write information of an EBML element without writing the data that it contains.
+    fn write_ebml_element_info(&mut self, info: ElementInfo) -> Result<()>;
 }
 
 // Implement the WriteEbml trait for all io::Write-ers.
 impl<T: Write + ?Sized> WriteEbml for T {
     fn write_ebml_element(&mut self, elem: Element) -> Result<()> {
-        write_variable_size_integer(self, elem.id)?;
-        write_variable_size_integer(self, elem.data.len() as i64)?;
-
+        self.write_ebml_element_info(elem.info)?;
         self.write(elem.data.as_ref())?;
+
+        Ok(())
+    }
+
+    fn write_ebml_element_info(&mut self, info: ElementInfo) -> Result<()> {
+        write_variable_size_integer(self, info.id)?;
+        write_variable_size_integer(self, info.size as i64)?;
+
         Ok(())
     }
 }
