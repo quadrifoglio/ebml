@@ -12,6 +12,8 @@ extern crate byteorder;
 pub mod error;
 pub mod io;
 
+use error::Result;
+
 /// Type alias for the EBML Element ID.
 pub type ElementId = i64;
 
@@ -51,6 +53,38 @@ impl Element {
     /// Get a reference to the element's data.
     pub fn data<'a>(&'a self) -> &'a Vec<u8> {
         &self.data
+    }
+
+    /// Consume the element and return its raw binary data.
+    pub fn get_data_binary(self) -> Vec<u8> {
+        self.data
+    }
+
+    /// Consume the element and return its data as a signed integer.
+    pub fn get_data_i64(self) -> i64 {
+        let data = self.data();
+        let mut value = 0 as i64;
+
+        for i in 0..data.len() {
+            value |= (data[data.len() - i - 1] as i64) << i * 8;
+        }
+
+        value
+    }
+
+    /// Consume the element and return its data as a 32-bits floating point number.
+    pub fn get_data_f32(self) -> f32 {
+        f32::from_bits(self.get_data_i64() as u32)
+    }
+
+    /// Consume the element and return its data as a floating point number.
+    pub fn get_data_f64(self) -> f64 {
+        f64::from_bits(self.get_data_i64() as u64)
+    }
+
+    /// Comsume the element and return its data as a UTF-8 string.
+    pub fn get_data_utf8(self) -> Result<String> {
+        Ok(String::from_utf8(self.data)?)
     }
 }
 
