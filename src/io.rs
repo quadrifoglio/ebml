@@ -115,10 +115,8 @@ fn read_variable_size_integer<R: Read + ?Sized>(r: &mut R, do_mask: bool) -> Res
     }
 
     for i in 0..len {
-        print!("{:x} ", buf[i]);
         value |= (buf[i] as i64) << ((len - i - 1) * 8);
     }
-    println!("");
 
     Ok(value)
 }
