@@ -12,31 +12,45 @@ use error::Result;
 /// EBML elements from any kind of input.
 pub trait ReadEbml {
     /// Read an entire EBML Element.
-    fn read_ebml_element(&mut self) -> Result<Element>;
+    fn read_ebml_element(&mut self) -> Result<(Element, usize)>;
 
     /// Read EBML element information, but without reading all the element's data.
-    fn read_ebml_element_info(&mut self) -> Result<ElementInfo>;
+    fn read_ebml_element_info(&mut self) -> Result<(ElementInfo, usize)>;
 }
 
 // Implement the ReadEbml trait for all io::Read-ers.
 impl<T: Read + ?Sized> ReadEbml for T {
-    fn read_ebml_element(&mut self) -> Result<Element> {
-        let info = self.read_ebml_element_info()?;
+    fn read_ebml_element(&mut self) -> Result<(Element, usize)> {
+        let (info, mut count) = self.read_ebml_element_info()?;
 
         let mut data = vec![0u8; info.size];
-        self.read(&mut data)?;
+        count += self.read(&mut data)?;
 
-        Ok(Element {
-            info: info,
-            data: data,
-        })
+        Ok((
+            Element {
+                info: info,
+                data: data,
+            },
+            count,
+        ))
     }
 
-    fn read_ebml_element_info(&mut self) -> Result<ElementInfo> {
-        let id = read_variable_size_integer(self, false)?;
-        let size = read_variable_size_integer(self, true)? as usize;
+    fn read_ebml_element_info(&mut self) -> Result<(ElementInfo, usize)> {
+        let mut count = 0 as usize;
 
-        Ok(ElementInfo { id: id, size: size })
+        let (id, r) = read_variable_size_integer(self, false)?;
+        count += r;
+
+        let (size, r) = read_variable_size_integer(self, true)?;
+        count += r;
+
+        Ok((
+            ElementInfo {
+                id: id,
+                size: size as usize,
+            },
+            count,
+        ))
     }
 }
 
@@ -67,9 +81,11 @@ impl<T: Write + ?Sized> WriteEbml for T {
     }
 }
 
-fn read_variable_size_integer<R: Read + ?Sized>(r: &mut R, do_mask: bool) -> Result<i64> {
+fn read_variable_size_integer<R: Read + ?Sized>(r: &mut R, do_mask: bool) -> Result<(i64, usize)> {
+    let mut count = 0 as usize;
+
     let mut buf = [0u8; 1];
-    r.read(&mut buf)?;
+    count += r.read(&mut buf)?;
 
     let num = buf[0];
     let mut mask = 0x7f;
@@ -111,14 +127,14 @@ fn read_variable_size_integer<R: Read + ?Sized>(r: &mut R, do_mask: bool) -> Res
     }
 
     if len > 1 {
-        r.read(&mut buf[1..])?;
+        count += r.read(&mut buf[1..])?;
     }
 
     for i in 0..len {
         value |= (buf[i] as i64) << ((len - i - 1) * 8);
     }
 
-    Ok(value)
+    Ok((value, count))
 }
 
 fn write_variable_size_integer<W: Write + ?Sized>(w: &mut W, v: i64, do_mask: bool) -> Result<()> {
