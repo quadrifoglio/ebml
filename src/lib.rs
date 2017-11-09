@@ -81,6 +81,18 @@ impl Element {
         value
     }
 
+    /// Consume the element and return its data as an unsigned integer.
+    pub fn data_u64(self) -> u64 {
+        let data = self.data();
+        let mut value = 0 as u64;
+
+        for i in 0..data.len() {
+            value |= (data[data.len() - i - 1] as u64) << i * 8;
+        }
+
+        value
+    }
+
     /// Consume the element and return its data as a 32-bits floating point number.
     pub fn data_f32(self) -> f32 {
         f32::from_bits(self.data_i64() as u32)
