@@ -33,8 +33,8 @@ impl<T: Read + ?Sized> ReadEbml for T {
     }
 
     fn read_ebml_element_info(&mut self) -> Result<ElementInfo> {
-        let id = read_variable_size_integer(self)?;
-        let size = read_variable_size_integer(self)? as usize;
+        let id = read_variable_size_integer(self, false)?;
+        let size = read_variable_size_integer(self, true)? as usize;
 
         Ok(ElementInfo { id: id, size: size })
     }
@@ -60,19 +60,19 @@ impl<T: Write + ?Sized> WriteEbml for T {
     }
 
     fn write_ebml_element_info(&mut self, info: ElementInfo) -> Result<()> {
-        write_variable_size_integer(self, info.id)?;
-        write_variable_size_integer(self, info.size as i64)?;
+        write_variable_size_integer(self, info.id, false)?;
+        write_variable_size_integer(self, info.size as i64, true)?;
 
         Ok(())
     }
 }
 
-fn read_variable_size_integer<R: Read + ?Sized>(r: &mut R) -> Result<i64> {
+fn read_variable_size_integer<R: Read + ?Sized>(r: &mut R, do_mask: bool) -> Result<i64> {
     let mut buf = [0u8; 1];
     r.read(&mut buf)?;
 
     let num = buf[0];
-    let mut mask = 0x00;
+    let mut mask = 0x7f;
     let mut len = 1 as usize;
 
     if (num & 0x80) != 0 {
@@ -102,55 +102,70 @@ fn read_variable_size_integer<R: Read + ?Sized>(r: &mut R) -> Result<i64> {
     }
 
     let mut value = 0 as i64;
-
     let mut buf = vec![0u8; len];
-    buf[0] = num & mask;
+
+    if do_mask {
+        buf[0] = num & mask;
+    } else {
+        buf[0] = num;
+    }
 
     if len > 1 {
         r.read(&mut buf[1..])?;
     }
 
     for i in 0..len {
+        print!("{:x} ", buf[i]);
         value |= (buf[i] as i64) << ((len - i - 1) * 8);
     }
+    println!("");
 
     Ok(value)
 }
 
-fn write_variable_size_integer<W: Write + ?Sized>(w: &mut W, value: i64) -> Result<()> {
+fn write_variable_size_integer<W: Write + ?Sized>(w: &mut W, v: i64, do_mask: bool) -> Result<()> {
     let mut mask = 0x80;
     let mut len = 1;
 
-    if value >> 49 != 0 {
+    if v >> 49 != 0 {
         len = 8;
         mask = 0x01;
-    } else if value >> 42 != 0 {
+    } else if v >> 42 != 0 {
         len = 7;
         mask = 0x02;
-    } else if value >> 35 != 0 {
+    } else if v >> 35 != 0 {
         len = 6;
         mask = 0x04;
-    } else if value >> 28 != 0 {
+    } else if v >> 28 != 0 {
         len = 5;
         mask = 0x08;
-    } else if value >> 21 != 0 {
+    } else if v >> 21 != 0 {
         len = 4;
         mask = 0x10;
-    } else if value >> 14 != 0 {
+    } else if v >> 14 != 0 {
         len = 3;
         mask = 0x20;
-    } else if value >> 7 != 0 {
+    } else if v >> 7 != 0 {
         len = 2;
         mask = 0x40;
     }
 
     let mut buf = vec![0u8; len];
     for i in 0..len {
-        buf[i] = (value >> ((len - i - 1) * 8)) as u8;
+        buf[i] = (v >> ((len - i - 1) * 8)) as u8;
     }
 
-    buf[0] |= mask;
-    w.write(buf.as_ref())?;
+    if do_mask {
+        buf[0] |= mask;
+    } else {
+        // If we do not uses masks, then there might be some leading 0s at the beginning of the
+        // buffer. This is caused by misinterpretation of the required length due to the fact that
+        // there is an additional bit slot available.
+        while buf[0] == 0x0 {
+            buf.remove(0);
+        }
+    }
 
+    w.write(buf.as_ref())?;
     Ok(())
 }
