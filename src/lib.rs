@@ -33,6 +33,8 @@ impl ElementInfo {
 }
 
 /// Represents an EBML Element.
+/// Every EBML element consists of two things: its information (ID & expected data size), and the
+/// data that is contains.
 pub struct Element {
     info: ElementInfo,
     data: Vec<u8>,
@@ -52,9 +54,9 @@ impl Element {
         }
     }
 
-    /// Get the EBML Element ID.
-    pub fn id(&self) -> i64 {
-        self.info.id
+    /// Get information about this EBML element, such as its ID and its expected data size.
+    pub fn info<'a>(&'a self) -> &'a ElementInfo {
+        &self.info
     }
 
     /// Get a reference to the element's data.
