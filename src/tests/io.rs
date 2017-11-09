@@ -22,7 +22,7 @@ fn element_read_with_data_one_octet() {
     let elem = data.read_ebml_element().unwrap();
 
     assert_eq!(42, elem.id());
-    assert_eq!(1, elem.size());
+    assert_eq!(1, elem.data().len());
     assert_eq!(&vec![10], elem.data());
 }
 
@@ -48,6 +48,6 @@ fn element_read_with_data_one_megs() {
     let elem = data.read_ebml_element().unwrap();
 
     assert_eq!(42, elem.id());
-    assert_eq!(0x100000, elem.size());
+    assert_eq!(0x100000, elem.data().len());
     assert_eq!(&vec![42u8; 0x100000], elem.data());
 }

@@ -20,6 +20,18 @@ pub struct ElementInfo {
     size: usize,
 }
 
+impl ElementInfo {
+    /// Get the EBML Element ID.
+    pub fn id(&self) -> i64 {
+        self.id
+    }
+
+    /// Get the size of the data contained withing the element.
+    pub fn size(&self) -> usize {
+        self.size
+    }
+}
+
 /// Represents an EBML Element.
 pub struct Element {
     info: ElementInfo,
@@ -28,8 +40,11 @@ pub struct Element {
 
 impl Element {
     /// Create a new EBML Element.
-    pub fn new(mut info: ElementInfo, data: Vec<u8>) -> Element {
-        info.size = data.len();
+    pub fn new(id: i64, data: Vec<u8>) -> Element {
+        let info = ElementInfo {
+            id: id,
+            size: data.len(),
+        };
 
         Element {
             info: info,
@@ -42,23 +57,18 @@ impl Element {
         self.info.id
     }
 
-    /// Get the size of the data contained withing the element.
-    pub fn size(&self) -> usize {
-        self.info.size
-    }
-
     /// Get a reference to the element's data.
     pub fn data<'a>(&'a self) -> &'a Vec<u8> {
         &self.data
     }
 
     /// Consume the element and return its raw binary data.
-    pub fn get_data_binary(self) -> Vec<u8> {
+    pub fn data_binary(self) -> Vec<u8> {
         self.data
     }
 
     /// Consume the element and return its data as a signed integer.
-    pub fn get_data_i64(self) -> i64 {
+    pub fn data_i64(self) -> i64 {
         let data = self.data();
         let mut value = 0 as i64;
 
@@ -70,17 +80,17 @@ impl Element {
     }
 
     /// Consume the element and return its data as a 32-bits floating point number.
-    pub fn get_data_f32(self) -> f32 {
-        f32::from_bits(self.get_data_i64() as u32)
+    pub fn data_f32(self) -> f32 {
+        f32::from_bits(self.data_i64() as u32)
     }
 
     /// Consume the element and return its data as a 64-bits floating point number.
-    pub fn get_data_f64(self) -> f64 {
-        f64::from_bits(self.get_data_i64() as u64)
+    pub fn data_f64(self) -> f64 {
+        f64::from_bits(self.data_i64() as u64)
     }
 
     /// Comsume the element and return its data as a UTF-8 string.
-    pub fn get_data_utf8(self) -> Result<String> {
+    pub fn data_utf8(self) -> Result<String> {
         Ok(String::from_utf8(self.data)?)
     }
 }
