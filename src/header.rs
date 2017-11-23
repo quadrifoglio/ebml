@@ -4,7 +4,12 @@ use types;
 
 ebml_container_element!(Header => 0x1a45dfa3, {
     version: Version,
-    doc_type: DocType
+    read_version: ReadVersion,
+    max_id_length: MaxIdLength,
+    max_size_length: MaxSizeLength,
+    doc_type: DocType,
+    doc_type_version: DocTypeVersion,
+    doc_type_read_version: DocTypeReadVersion
 });
 
 ebml_simple_element!(Version => 0x4286, types::UnsignedInt);
