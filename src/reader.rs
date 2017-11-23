@@ -3,14 +3,13 @@
 use std::io::Read;
 use std::collections::HashMap;
 
-use {Element, ElementId, ElementSize};
+use element::{self, Element};
 use error::Result;
-use types::SignedInt;
 
 /// A document reader. Requires a `Read` object and streams EBML elements.
 pub struct Reader<R: Read> {
     reader: R,
-    elements: HashMap<ElementId, bool>,
+    elements: HashMap<element::Id, bool>,
 }
 
 impl<R: Read> Reader<R> {
@@ -29,7 +28,7 @@ impl<R: Read> Reader<R> {
 
     /// Read an EBML element. If `recurse` is set to true, this function will check if the element
     /// contains any children and read them too in a reucrsive manner.
-    pub fn read_element(&mut self, recurse: bool) -> Result<(ElementId, usize)> {
+    pub fn read_element(&mut self, recurse: bool) -> Result<(element::Id, usize)> {
         let mut count = 0 as usize;
 
         let (id, c) = self.read_vint(false)?;
@@ -38,12 +37,12 @@ impl<R: Read> Reader<R> {
         let (size, c) = self.read_vint(true)?;
         count += c;
 
-        let id = id as ElementId;
-        let size = size as ElementSize;
+        let id = id as element::Id;
+        let size = size as element::Size;
 
         let mut has_children = false;
-        if self.elements.contains_key(&(id as ElementId)) {
-            has_children = self.elements[&(id as ElementId)];
+        if self.elements.contains_key(&(id as element::Id)) {
+            has_children = self.elements[&(id as element::Id)];
         }
 
         if has_children && recurse {
@@ -58,14 +57,14 @@ impl<R: Read> Reader<R> {
             count += self.reader.read(&mut data)?;
         }
 
-        Ok((id as ElementId, count))
+        Ok((id as element::Id, count))
     }
 
     /// Read an EBML variable size integer (also known as a VINT). If `do_mask` is set to true,
     /// then a mask operation will be applied so that the VINT length marker bits will not be
     /// interpreted in the resulting value. Returns the value and the amout of bytes that were
     /// read.
-    pub fn read_vint(&mut self, do_mask: bool) -> Result<(SignedInt, usize)> {
+    pub fn read_vint(&mut self, do_mask: bool) -> Result<(element::types::SignedInt, usize)> {
         let mut count = 0 as usize;
 
         let mut buf = [0u8; 1];
