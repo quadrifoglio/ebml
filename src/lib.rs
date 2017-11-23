@@ -42,6 +42,56 @@ macro_rules! ebml_simple_element {
     }
 }
 
+macro_rules! ebml_buffer_element {
+    ($name:ident => $id:expr, $dt:ty) => {
+        pub struct $name($dt);
+
+        impl ::Element for $name {
+            fn id(&self) -> ::ElementId {
+                $id
+            }
+
+            fn size(&self) -> ::ElementSize {
+                self.0.len()
+            }
+
+            fn has_children(&self) -> bool {
+                false
+            }
+        }
+    }
+}
+
+macro_rules! ebml_container_element {
+    ($name:ident => $id:expr, { $($member:ident : $type:ty ),* } ) => {
+        pub struct $name {
+            $(
+                $member: $type,
+            )*
+        }
+
+        impl ::Element for $name {
+            fn id(&self) -> ::ElementId {
+                $id
+            }
+
+            fn size(&self) -> ::ElementSize {
+                let mut size: ::ElementSize = 0;
+
+                $(
+                    size += self.$member.size();
+                )*
+
+                size
+            }
+
+            fn has_children(&self) -> bool {
+                true
+            }
+        }
+    }
+}
+
 pub mod types;
 pub mod header;
 pub mod reader;
