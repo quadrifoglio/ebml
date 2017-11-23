@@ -6,6 +6,12 @@ use std::collections::HashMap;
 use element::{self, Element};
 use error::Result;
 
+/// Represents a read EBML element.
+pub struct ReadElement {
+    pub id: element::Id,
+    pub size: element::Size,
+}
+
 /// A document reader. Requires a `Read` object and streams EBML elements.
 pub struct Reader<R: Read> {
     reader: R,
@@ -28,7 +34,7 @@ impl<R: Read> Reader<R> {
 
     /// Read an EBML element. If `recurse` is set to true, this function will check if the element
     /// contains any children and read them too in a reucrsive manner.
-    pub fn read_element(&mut self, recurse: bool) -> Result<(element::Id, usize)> {
+    pub fn read_element(&mut self, recurse: bool) -> Result<(ReadElement, usize)> {
         let mut count = 0 as usize;
 
         let (id, c) = self.read_vint(false)?;
@@ -41,8 +47,8 @@ impl<R: Read> Reader<R> {
         let size = size as element::Size;
 
         let mut has_children = false;
-        if self.elements.contains_key(&(id as element::Id)) {
-            has_children = self.elements[&(id as element::Id)];
+        if self.elements.contains_key(&id) {
+            has_children = self.elements[&id];
         }
 
         if has_children && recurse {
@@ -53,11 +59,21 @@ impl<R: Read> Reader<R> {
                 r += c;
             }
         } else if !has_children {
-            let mut data = vec![0u8; size as usize];
+            let mut data = vec![0u8; size];
             count += self.reader.read(&mut data)?;
         }
 
-        Ok((id as element::Id, count))
+        Ok((ReadElement { id: id, size: size }, count))
+    }
+
+    /// Read an EBML element along with its data.
+    pub fn read_element_data(&mut self) -> Result<(ReadElement, element::Data)> {
+        let (elem, _) = self.read_element(false)?;
+
+        let mut buf = vec![0u8; elem.size];
+        self.reader.read(&mut buf)?;
+
+        Ok((elem, element::Data::Binary(buf)))
     }
 
     /// Read an EBML variable size integer (also known as a VINT). If `do_mask` is set to true,

@@ -24,6 +24,15 @@ pub trait Element: Default {
     fn has_children() -> bool;
 }
 
+/// Data contained within an EBML element.
+pub enum Data {
+    Binary(types::Binary),
+    UnsignedInt(types::UnsignedInt),
+    SignedInt(types::SignedInt),
+    Float(types::Float),
+    Utf8(types::Utf8),
+}
+
 macro_rules! ebml_simple_element {
     ($name:ident => $id:expr, $dt:ty) => {
         #[derive(Default)]

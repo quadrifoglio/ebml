@@ -19,15 +19,15 @@ fn ebml_header_sequential() {
     r.register::<header::DocTypeVersion>();
     r.register::<header::DocTypeReadVersion>();
 
-    let (id, _) = r.read_element(false).unwrap();
-    assert_eq!(id, header::Root::id());
+    let (elem, _) = r.read_element(false).unwrap();
+    assert_eq!(elem.id, header::Root::id());
 
-    let (id, _) = r.read_element(false).unwrap();
-    assert_eq!(id, header::DocType::id());
+    let (elem, _) = r.read_element(false).unwrap();
+    assert_eq!(elem.id, header::DocType::id());
 
-    let (id, _) = r.read_element(false).unwrap();
-    assert_eq!(id, header::DocTypeVersion::id());
+    let (elem, _) = r.read_element(false).unwrap();
+    assert_eq!(elem.id, header::DocTypeVersion::id());
 
-    let (id, _) = r.read_element(false).unwrap();
-    assert_eq!(id, header::DocTypeReadVersion::id());
+    let (elem, _) = r.read_element(false).unwrap();
+    assert_eq!(elem.id, header::DocTypeReadVersion::id());
 }
