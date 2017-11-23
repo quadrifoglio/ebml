@@ -5,6 +5,10 @@ error_chain! {
         UnexpectedElementId {
             description("Received an unexpected EBML element ID")
         }
+
+        NoChildren {
+            description("The EBML element does not contain any child elements")
+        }
     }
 
     foreign_links {
