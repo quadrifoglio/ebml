@@ -14,8 +14,8 @@ error_chain! {
             description("Invalid floating point size (was not 32 nor 64 bits)")
         }
 
-        InvalidDataType {
-            description("Invalid data type")
+        NoData {
+            description("The element does not contain any data")
         }
     }
 

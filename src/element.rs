@@ -22,29 +22,26 @@ pub trait Element: Default {
     /// Returns the ID of the EBML element.
     fn id() -> Id;
 
-    /// Return wether this EBML element has children, i.e if it contains other EBML elements.
-    fn has_children() -> bool;
+    /// Return wether this EBML element is a Master Element, i.e if it contains other EBML elements.
+    fn is_master() -> bool;
 }
 
 /// Represents data contained within an EBML element.
-pub enum Data {
-    None,
-    Buffer(Vec<u8>),
-}
+pub struct Data(pub(crate) Option<Vec<u8>>);
 
 impl Data {
     /// Return the element data as a raw binary buffer.
     pub fn into_binary(self) -> Result<types::Binary> {
-        if let Data::Buffer(buf) = self {
+        if let Some(buf) = self.0 {
             return Ok(buf);
         }
 
-        Err(ErrorKind::InvalidDataType.into())
+        Err(ErrorKind::NoData.into())
     }
 
     /// Interpret the element data as an unsigned integer.
     pub fn into_unsigned_int(self) -> Result<types::UnsignedInt> {
-        if let Data::Buffer(buf) = self {
+        if let Some(buf) = self.0 {
             let mut value = 0 as u64;
 
             for i in 0..buf.len() {
@@ -54,12 +51,12 @@ impl Data {
             return Ok(value);
         }
 
-        Err(ErrorKind::InvalidDataType.into())
+        Err(ErrorKind::NoData.into())
     }
 
     /// Interpret the element data as a signed integer.
     pub fn into_signed_int(self) -> Result<types::SignedInt> {
-        if let Data::Buffer(buf) = self {
+        if let Some(buf) = self.0 {
             let mut value = 0 as i64;
 
             for i in 0..buf.len() {
@@ -69,17 +66,17 @@ impl Data {
             return Ok(value);
         }
 
-        Err(ErrorKind::InvalidDataType.into())
+        Err(ErrorKind::NoData.into())
     }
 
     /// Interpret the element data as a floating point number.
     pub fn into_float(self) -> Result<types::Float> {
         let len: usize;
 
-        if let Data::Buffer(ref buf) = self {
+        if let Some(ref buf) = self.0 {
             len = buf.len();
         } else {
-            return Err(ErrorKind::InvalidDataType.into());
+            return Err(ErrorKind::NoData.into());
         }
 
         if len == 4 {
@@ -94,11 +91,11 @@ impl Data {
 
     /// Interpret the element data as a UTF-8 string.
     pub fn into_utf8(self) -> Result<types::Utf8> {
-        if let Data::Buffer(buf) = self {
+        if let Some(buf) = self.0 {
             return Ok(String::from_utf8(buf)?);
         }
 
-        Err(ErrorKind::InvalidDataType.into())
+        Err(ErrorKind::NoData.into())
     }
 }
 
@@ -112,7 +109,7 @@ macro_rules! ebml_simple_element {
                 $id
             }
 
-            fn has_children() -> bool {
+            fn is_master() -> bool {
                 false
             }
         }
@@ -133,7 +130,7 @@ macro_rules! ebml_container_element {
                 $id
             }
 
-            fn has_children() -> bool {
+            fn is_master() -> bool {
                 true
             }
         }

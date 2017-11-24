@@ -8,10 +8,32 @@ use error::Result;
 
 /// Represents a read EBML element.
 pub struct ReadElement {
-    pub id: element::Id,
-    pub size: element::Size,
-    pub children: Vec<ReadElement>,
-    pub data: element::Data,
+    id: element::Id,
+    size: element::Size,
+    children: Vec<ReadElement>,
+    data: element::Data,
+}
+
+impl ReadElement {
+    /// Returns the ID of the parsed element.
+    pub fn id(&self) -> element::Id {
+        self.id
+    }
+
+    /// Returns the size in bytes of the data contained within the parsed element.
+    pub fn size(&self) -> element::Size {
+        self.size
+    }
+
+    /// Consumes the element object to retreive its child elements.
+    pub fn children(self) -> Vec<ReadElement> {
+        self.children
+    }
+
+    /// Consumes the element object to retreive the data that it contains.
+    pub fn data(self) -> element::Data {
+        self.data
+    }
 }
 
 /// A document reader. Requires a `Read` object and streams EBML elements.
@@ -31,7 +53,7 @@ impl<R: Read> Reader<R> {
 
     /// Register a new EBML element that will be recognized by the `Reader` during parsing.
     pub fn register<E: Element>(&mut self) {
-        self.elements.insert(E::id(), E::has_children());
+        self.elements.insert(E::id(), E::is_master());
     }
 
     /// Read an EBML element. If `ignore_data` is set to true, then the data contained within the
@@ -58,7 +80,7 @@ impl<R: Read> Reader<R> {
             id: id,
             size: size,
             children: Vec::new(),
-            data: element::Data::None,
+            data: element::Data(None),
         };
 
         if !ignore_data {
@@ -75,7 +97,7 @@ impl<R: Read> Reader<R> {
                 let mut data = vec![0u8; size];
                 count += self.reader.read(&mut data)?;
 
-                elem.data = element::Data::Buffer(data);
+                elem.data = element::Data(Some(data));
             }
         }
 
