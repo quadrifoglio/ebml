@@ -56,10 +56,10 @@ impl<R: Read> Reader<R> {
         self.elements.insert(E::id(), E::is_master());
     }
 
-    /// Read an EBML element. If `ignore_data` is set to true, then the data contained within the
-    /// EBML element will not be handled. The data must therefore be handled by the caller
-    /// (be taken off the input source) or subsequent calls to `read_element` will fail.
-    pub fn read_element(&mut self, ignore_data: bool) -> Result<(ReadElement, usize)> {
+    /// Read an EBML element. If `handle_data` is set to false, then the data contained within the
+    /// EBML element will be ignored. It must therefore be handled by the caller (be taken
+    /// off the input source) or subsequent calls to `read_element` will fail.
+    pub fn read_element(&mut self, handle_data: bool) -> Result<(ReadElement, usize)> {
         let mut count = 0 as usize;
 
         let (id, c) = self.read_vint(false)?;
@@ -83,12 +83,12 @@ impl<R: Read> Reader<R> {
             data: element::Data(None),
         };
 
-        if !ignore_data {
+        if handle_data {
             if has_children {
                 let mut r = 0 as usize;
 
                 while r < size as usize {
-                    let (child, c) = self.read_element(false)?;
+                    let (child, c) = self.read_element(true)?;
                     r += c;
 
                     elem.children.push(child);
