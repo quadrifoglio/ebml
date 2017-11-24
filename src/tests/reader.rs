@@ -19,15 +19,18 @@ fn ebml_header_sequential() {
     r.register::<header::DocTypeVersion>();
     r.register::<header::DocTypeReadVersion>();
 
-    let (elem, _) = r.read_element(false).unwrap();
+    let (elem, _, _) = r.read_element(true).unwrap();
     assert_eq!(elem.id, header::Root::id());
 
-    let (elem, _) = r.read_element(false).unwrap();
+    let (elem, data, _) = r.read_element(false).unwrap();
     assert_eq!(elem.id, header::DocType::id());
+    assert_eq!(data.into_utf8().unwrap().as_str(), "matroska");
 
-    let (elem, _) = r.read_element(false).unwrap();
+    let (elem, data, _) = r.read_element(false).unwrap();
     assert_eq!(elem.id, header::DocTypeVersion::id());
+    assert_eq!(data.into_unsigned_int().unwrap(), 1 as u64);
 
-    let (elem, _) = r.read_element(false).unwrap();
+    let (elem, data, _) = r.read_element(false).unwrap();
     assert_eq!(elem.id, header::DocTypeReadVersion::id());
+    assert_eq!(data.into_unsigned_int().unwrap(), 1 as u64);
 }
