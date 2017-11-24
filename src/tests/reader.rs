@@ -11,22 +11,22 @@ fn ebml_header_sequential() {
         0x61, 0x42, 0x87, 0x81, 0x01, 0x42, 0x85, 0x81, 0x01,
     ]);
 
-    let mut r = Reader::from_reader(data);
+    let mut r = Reader::from(data);
 
     let (elem, _) = r.read_element(false).unwrap();
     assert_eq!(elem.id(), header::Root::id());
 
     let (elem, _) = r.read_element(true).unwrap();
     assert_eq!(elem.id(), header::DocType::id());
-    assert_eq!(elem.data().into_utf8().unwrap().as_str(), "matroska");
+    assert_eq!(elem.data().to_utf8().unwrap().as_str(), "matroska");
 
     let (elem, _) = r.read_element(true).unwrap();
     assert_eq!(elem.id(), header::DocTypeVersion::id());
-    assert_eq!(elem.data().into_unsigned_int().unwrap(), 1 as u64);
+    assert_eq!(elem.data().to_unsigned_int().unwrap(), 1 as u64);
 
     let (elem, _) = r.read_element(true).unwrap();
     assert_eq!(elem.id(), header::DocTypeReadVersion::id());
-    assert_eq!(elem.data().into_unsigned_int().unwrap(), 1 as u64);
+    assert_eq!(elem.data().to_unsigned_int().unwrap(), 1 as u64);
 }
 
 #[test]
@@ -36,22 +36,17 @@ fn ebml_header_children() {
         0x61, 0x42, 0x87, 0x81, 0x01, 0x42, 0x85, 0x81, 0x01,
     ]);
 
-    let mut r = Reader::from_reader(data);
+    let mut r = Reader::from(data);
 
-    let (elem, _) = r.read_element(true).unwrap();
-    assert_eq!(elem.id(), header::Root::id());
+    let (header, _) = r.read_element(true).unwrap();
+    assert_eq!(header.id(), header::Root::id());
 
-    let mut children = elem.children().into_iter();
+    let dt = header.find::<header::DocType>().unwrap();
+    assert_eq!(dt.data().to_utf8().unwrap().as_str(), "matroska");
 
-    let elem = children.next().unwrap();
-    assert_eq!(elem.id(), header::DocType::id());
-    assert_eq!(elem.data().into_utf8().unwrap().as_str(), "matroska");
+    let dt_version = header.find::<header::DocTypeVersion>().unwrap();
+    assert_eq!(dt_version.data().to_unsigned_int().unwrap(), 1 as u64);
 
-    let elem = children.next().unwrap();
-    assert_eq!(elem.id(), header::DocTypeVersion::id());
-    assert_eq!(elem.data().into_unsigned_int().unwrap(), 1 as u64);
-
-    let elem = children.next().unwrap();
-    assert_eq!(elem.id(), header::DocTypeReadVersion::id());
-    assert_eq!(elem.data().into_unsigned_int().unwrap(), 1 as u64);
+    let dt_read_version = header.find::<header::DocTypeReadVersion>().unwrap();
+    assert_eq!(dt_read_version.data().to_unsigned_int().unwrap(), 1 as u64);
 }
