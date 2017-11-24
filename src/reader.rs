@@ -10,6 +10,8 @@ use error::Result;
 pub struct ReadElement {
     pub id: element::Id,
     pub size: element::Size,
+    pub children: Vec<ReadElement>,
+    pub data: element::Data,
 }
 
 /// A document reader. Requires a `Read` object and streams EBML elements.
@@ -35,7 +37,7 @@ impl<R: Read> Reader<R> {
     /// Read an EBML element. If `ignore_data` is set to true, then the data contained within the
     /// EBML element will not be handled. The data must therefore be handled by the caller
     /// (be taken off the input source) or subsequent calls to `read_element` will fail.
-    pub fn read_element(&mut self, ignore_data: bool) -> Result<(ReadElement, element::Data, usize)> {
+    pub fn read_element(&mut self, ignore_data: bool) -> Result<(ReadElement, usize)> {
         let mut count = 0 as usize;
 
         let (id, c) = self.read_vint(false)?;
@@ -52,28 +54,32 @@ impl<R: Read> Reader<R> {
             has_children = self.elements[&id];
         }
 
-        let elem = ReadElement { id: id, size: size };
+        let mut elem = ReadElement {
+            id: id,
+            size: size,
+            children: Vec::new(),
+            data: element::Data::None,
+        };
 
         if !ignore_data {
             if has_children {
                 let mut r = 0 as usize;
 
                 while r < size as usize {
-                    let (_, _, c) = self.read_element(false)?;
+                    let (child, c) = self.read_element(false)?;
                     r += c;
-                }
 
-                // TODO: Find a way to return the children.
-                return Ok((elem, element::Data::Ignored, count))
+                    elem.children.push(child);
+                }
             } else {
                 let mut data = vec![0u8; size];
                 count += self.reader.read(&mut data)?;
 
-                return Ok((elem, element::Data::Buffer(data), count))
+                elem.data = element::Data::Buffer(data);
             }
-        } else {
-            Ok((elem, element::Data::Ignored, count))
         }
+
+        Ok((elem, count))
     }
 
     /// Read an EBML variable size integer (also known as a VINT). If `do_mask` is set to true,

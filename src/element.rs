@@ -1,6 +1,6 @@
 //! EBML Element types & helper macros.
 
-use error::{Result, ErrorKind};
+use error::{ErrorKind, Result};
 
 /// Type alias for the IDs of EBML elements.
 pub type Id = u64;
@@ -28,7 +28,7 @@ pub trait Element: Default {
 
 /// Represents data contained within an EBML element.
 pub enum Data {
-    Ignored,
+    None,
     Buffer(Vec<u8>),
 }
 
@@ -83,7 +83,8 @@ impl Data {
         }
 
         if len == 4 {
-            Ok(f32::from_bits(self.into_unsigned_int()? as u32) as types::Float)
+            Ok(f32::from_bits(self.into_unsigned_int()? as u32)
+                as types::Float)
         } else if len == 8 {
             Ok(f64::from_bits(self.into_unsigned_int()?))
         } else {
