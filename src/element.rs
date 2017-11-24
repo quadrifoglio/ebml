@@ -101,7 +101,8 @@ impl Data {
     }
 }
 
-macro_rules! ebml_mandatory_element {
+#[macro_export]
+macro_rules! ebml_element_mandatory {
     ($name:ident => $id:expr, $dt:ty) => {
         #[derive(Default)]
         pub struct $name($dt);
@@ -118,7 +119,8 @@ macro_rules! ebml_mandatory_element {
     }
 }
 
-macro_rules! ebml_default_element {
+#[macro_export]
+macro_rules! ebml_element_default {
     ($name:ident => $id:expr, $dt: ty, $def:expr) => {
         pub struct $name($dt);
 
@@ -140,7 +142,8 @@ macro_rules! ebml_default_element {
     }
 }
 
-macro_rules! ebml_container_element {
+#[macro_export]
+macro_rules! ebml_element_container {
     ($name:ident => $id:expr) => {
         #[derive(Default)]
         pub struct $name;
