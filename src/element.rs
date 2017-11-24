@@ -27,11 +27,12 @@ pub trait Element: Default {
 }
 
 /// Represents data contained within an EBML element.
+#[derive(Clone)]
 pub struct Data(pub(crate) Option<Vec<u8>>);
 
 impl Data {
-    /// Return the element data as a raw binary buffer.
-    pub fn into_binary(self) -> Result<types::Binary> {
+    /// Consume the object and returns its data as a binary buffer.
+    pub fn take(self) -> Result<types::Binary> {
         if let Some(buf) = self.0 {
             return Ok(buf);
         }
@@ -39,9 +40,19 @@ impl Data {
         Err(ErrorKind::NoData.into())
     }
 
+    /// Interpret the element data as a UTF-8 string. This function creates a copy of the data in
+    /// order to allocate the new UTF-8 string.
+    pub fn to_utf8(&self) -> Result<types::Utf8> {
+        if let Some(ref buf) = self.0 {
+            return Ok(String::from_utf8(buf.clone())?);
+        }
+
+        Err(ErrorKind::NoData.into())
+    }
+
     /// Interpret the element data as an unsigned integer.
-    pub fn into_unsigned_int(self) -> Result<types::UnsignedInt> {
-        if let Some(buf) = self.0 {
+    pub fn to_unsigned_int(&self) -> Result<types::UnsignedInt> {
+        if let Some(ref buf) = self.0 {
             let mut value = 0 as u64;
 
             for i in 0..buf.len() {
@@ -55,8 +66,8 @@ impl Data {
     }
 
     /// Interpret the element data as a signed integer.
-    pub fn into_signed_int(self) -> Result<types::SignedInt> {
-        if let Some(buf) = self.0 {
+    pub fn to_signed_int(&self) -> Result<types::SignedInt> {
+        if let Some(ref buf) = self.0 {
             let mut value = 0 as i64;
 
             for i in 0..buf.len() {
@@ -70,7 +81,7 @@ impl Data {
     }
 
     /// Interpret the element data as a floating point number.
-    pub fn into_float(self) -> Result<types::Float> {
+    pub fn to_float(&self) -> Result<types::Float> {
         let len: usize;
 
         if let Some(ref buf) = self.0 {
@@ -80,22 +91,13 @@ impl Data {
         }
 
         if len == 4 {
-            Ok(f32::from_bits(self.into_unsigned_int()? as u32)
+            Ok(f32::from_bits(self.to_unsigned_int()? as u32)
                 as types::Float)
         } else if len == 8 {
-            Ok(f64::from_bits(self.into_unsigned_int()?))
+            Ok(f64::from_bits(self.to_unsigned_int()?))
         } else {
             Err(ErrorKind::InvalidFloatSize.into())
         }
-    }
-
-    /// Interpret the element data as a UTF-8 string.
-    pub fn into_utf8(self) -> Result<types::Utf8> {
-        if let Some(buf) = self.0 {
-            return Ok(String::from_utf8(buf)?);
-        }
-
-        Err(ErrorKind::NoData.into())
     }
 }
 

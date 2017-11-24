@@ -1,7 +1,6 @@
 //! The module for the document reading & parsing functionality.
 
 use std::io::Read;
-use std::fs::File;
 use std::collections::HashMap;
 
 use header;
@@ -9,10 +8,11 @@ use element::{self, Element};
 use error::Result;
 
 /// Represents a read EBML element.
+#[derive(Clone)]
 pub struct ReadElement {
     id: element::Id,
     size: element::Size,
-    children: Vec<ReadElement>,
+    children: HashMap<element::Id, ReadElement>,
     data: element::Data,
 }
 
@@ -27,14 +27,22 @@ impl ReadElement {
         self.size
     }
 
+    /// Try to find a specific element in this element's children and return a reference to it.
+    pub fn find<'a, E: Element>(&'a self) -> Option<&'a ReadElement> {
+        self.children.get(&E::id())
+    }
+
+    /// Returns a reference to the data contained within this element.
+    pub fn data<'a>(&'a self) -> &'a element::Data {
+        &self.data
+    }
+
     /// Consumes the element object to retreive its child elements.
     pub fn children(self) -> Vec<ReadElement> {
         self.children
-    }
-
-    /// Consumes the element object to retreive the data that it contains.
-    pub fn data(self) -> element::Data {
-        self.data
+            .into_iter()
+            .map(|(_, v)| v)
+            .collect::<Vec<_>>()
     }
 }
 
@@ -46,7 +54,7 @@ pub struct Reader<R: Read> {
 
 impl<R: Read> Reader<R> {
     /// Create a new EBML `Reader` from a `Read` object.
-    pub fn from_reader(reader: R) -> Reader<R> {
+    fn new(reader: R) -> Reader<R> {
         let mut r = Reader {
             reader: reader,
             elements: HashMap::new(),
@@ -62,11 +70,6 @@ impl<R: Read> Reader<R> {
         r.register::<header::DocTypeReadVersion>();
 
         r
-    }
-
-    /// Create a new EBML `Reader` from a `File`.
-    pub fn from_file(file: File) -> Reader<File> {
-        Reader::from_reader(file)
     }
 
     /// Register a new EBML element that will be recognized by the `Reader` during parsing.
@@ -97,7 +100,7 @@ impl<R: Read> Reader<R> {
         let mut elem = ReadElement {
             id: id,
             size: size,
-            children: Vec::new(),
+            children: HashMap::new(),
             data: element::Data(None),
         };
 
@@ -109,7 +112,7 @@ impl<R: Read> Reader<R> {
                     let (child, c) = self.read_element(true)?;
                     r += c;
 
-                    elem.children.push(child);
+                    elem.children.insert(child.id(), child);
                 }
             } else {
                 let mut data = vec![0u8; size];
@@ -180,5 +183,11 @@ impl<R: Read> Reader<R> {
         }
 
         Ok((value, count))
+    }
+}
+
+impl<R: Read> ::std::convert::From<R> for Reader<R> {
+    fn from(r: R) -> Reader<R> {
+        Reader::new(r)
     }
 }
