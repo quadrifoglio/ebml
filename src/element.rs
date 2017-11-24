@@ -99,7 +99,7 @@ impl Data {
     }
 }
 
-macro_rules! ebml_simple_element {
+macro_rules! ebml_mandatory_element {
     ($name:ident => $id:expr, $dt:ty) => {
         #[derive(Default)]
         pub struct $name($dt);
@@ -116,14 +116,32 @@ macro_rules! ebml_simple_element {
     }
 }
 
-macro_rules! ebml_container_element {
-    ($name:ident => $id:expr, { $($member:ident : $type:ty ),* } ) => {
-        #[derive(Default)]
-        pub struct $name {
-            $(
-                pub $member: $type,
-            )*
+macro_rules! ebml_default_element {
+    ($name:ident => $id:expr, $dt: ty, $def:expr) => {
+        pub struct $name($dt);
+
+        impl ::element::Element for $name {
+            fn id() -> ::element::Id {
+                $id
+            }
+
+            fn is_master() -> bool {
+                false
+            }
         }
+
+        impl ::std::default::Default for $name {
+            fn default() -> Self {
+                $name($def)
+            }
+        }
+    }
+}
+
+macro_rules! ebml_container_element {
+    ($name:ident => $id:expr) => {
+        #[derive(Default)]
+        pub struct $name;
 
         impl ::element::Element for $name {
             fn id() -> ::element::Id {

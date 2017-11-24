@@ -12,10 +12,6 @@ fn ebml_header_sequential() {
     ]);
 
     let mut r = Reader::from_reader(data);
-    r.register::<header::Root>();
-    r.register::<header::DocType>();
-    r.register::<header::DocTypeVersion>();
-    r.register::<header::DocTypeReadVersion>();
 
     let (elem, _) = r.read_element(false).unwrap();
     assert_eq!(elem.id(), header::Root::id());
@@ -41,10 +37,6 @@ fn ebml_header_children() {
     ]);
 
     let mut r = Reader::from_reader(data);
-    r.register::<header::Root>();
-    r.register::<header::DocType>();
-    r.register::<header::DocTypeVersion>();
-    r.register::<header::DocTypeReadVersion>();
 
     let (elem, _) = r.read_element(true).unwrap();
     assert_eq!(elem.id(), header::Root::id());

@@ -1,8 +1,10 @@
 //! The module for the document reading & parsing functionality.
 
 use std::io::Read;
+use std::fs::File;
 use std::collections::HashMap;
 
+use header;
 use element::{self, Element};
 use error::Result;
 
@@ -43,12 +45,28 @@ pub struct Reader<R: Read> {
 }
 
 impl<R: Read> Reader<R> {
-    /// Create a new EBML Reader from a `Read` object.
+    /// Create a new EBML `Reader` from a `Read` object.
     pub fn from_reader(reader: R) -> Reader<R> {
-        Reader {
+        let mut r = Reader {
             reader: reader,
             elements: HashMap::new(),
-        }
+        };
+
+        r.register::<header::Root>();
+        r.register::<header::Version>();
+        r.register::<header::ReadVersion>();
+        r.register::<header::MaxIdLength>();
+        r.register::<header::MaxSizeLength>();
+        r.register::<header::DocType>();
+        r.register::<header::DocTypeVersion>();
+        r.register::<header::DocTypeReadVersion>();
+
+        r
+    }
+
+    /// Create a new EBML `Reader` from a `File`.
+    pub fn from_file(file: File) -> Reader<File> {
+        Reader::from_reader(file)
     }
 
     /// Register a new EBML element that will be recognized by the `Reader` during parsing.
