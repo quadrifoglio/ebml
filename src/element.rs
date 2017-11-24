@@ -107,8 +107,8 @@ macro_rules! ebml_element_mandatory {
         #[derive(Default)]
         pub struct $name($dt);
 
-        impl ::element::Element for $name {
-            fn id() -> ::element::Id {
+        impl $crate::element::Element for $name {
+            fn id() -> $crate::element::Id {
                 $id
             }
 
@@ -124,8 +124,8 @@ macro_rules! ebml_element_default {
     ($name:ident => $id:expr, $dt: ty, $def:expr) => {
         pub struct $name($dt);
 
-        impl ::element::Element for $name {
-            fn id() -> ::element::Id {
+        impl $crate::element::Element for $name {
+            fn id() -> $crate::element::Id {
                 $id
             }
 
@@ -148,8 +148,8 @@ macro_rules! ebml_element_container {
         #[derive(Default)]
         pub struct $name;
 
-        impl ::element::Element for $name {
-            fn id() -> ::element::Id {
+        impl $crate::element::Element for $name {
+            fn id() -> $crate::element::Id {
                 $id
             }
 
