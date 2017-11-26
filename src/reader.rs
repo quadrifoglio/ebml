@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use header;
 use element::{self, Element};
-use error::Result;
+use error::{ErrorKind, Result};
 
 /// Represents a read EBML element.
 #[derive(Clone)]
@@ -114,9 +114,17 @@ impl<R: Read> Reader<R> {
 
                     elem.children.insert(child.id(), child);
                 }
+
+                count += r;
             } else {
                 let mut data = vec![0u8; size];
-                count += self.reader.read(&mut data)?;
+                let c = self.reader.read(&mut data)?;
+
+                if c == 0 {
+                    bail!(ErrorKind::UnexpectedEof);
+                } else {
+                    count += c;
+                }
 
                 elem.data = element::Data(Some(data));
             }
@@ -131,9 +139,12 @@ impl<R: Read> Reader<R> {
     /// read.
     pub fn read_vint(&mut self, do_mask: bool) -> Result<(element::types::SignedInt, usize)> {
         let mut count = 0 as usize;
-
         let mut buf = [0u8; 1];
+
         count += self.reader.read(&mut buf)?;
+        if count == 0 {
+            bail!(ErrorKind::UnexpectedEof);
+        }
 
         let num = buf[0];
         let mut mask = 0x7f;
@@ -175,7 +186,13 @@ impl<R: Read> Reader<R> {
         }
 
         if len > 1 {
-            count += self.reader.read(&mut buf[1..])?;
+            let c = self.reader.read(&mut buf[1..])?;
+
+            if c == 0 {
+                bail!(ErrorKind::UnexpectedEof);
+            } else {
+                count += c;
+            }
         }
 
         for i in 0..len {

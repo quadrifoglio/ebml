@@ -2,6 +2,10 @@
 
 error_chain! {
     errors {
+        UnexpectedEof {
+            description("Unexpected end of file")
+        }
+
         UnexpectedElementId {
             description("Received an unexpected EBML element ID")
         }
