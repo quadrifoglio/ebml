@@ -12,7 +12,7 @@ use error::{ErrorKind, Result};
 pub struct ReadElement {
     id: element::Id,
     size: element::Size,
-    children: HashMap<element::Id, ReadElement>,
+    children: Vec<ReadElement>,
     data: element::Data,
 }
 
@@ -29,7 +29,13 @@ impl ReadElement {
 
     /// Try to find a specific element in this element's children and return a reference to it.
     pub fn find<'a, E: Element>(&'a self) -> Option<&'a ReadElement> {
-        self.children.get(&E::id())
+        for child in &self.children {
+            if child.id == E::id() {
+                return Some(child);
+            }
+        }
+
+        None
     }
 
     /// Returns a reference to the data contained within this element.
@@ -40,9 +46,6 @@ impl ReadElement {
     /// Consumes the element object to retreive its child elements.
     pub fn children(self) -> Vec<ReadElement> {
         self.children
-            .into_iter()
-            .map(|(_, v)| v)
-            .collect::<Vec<_>>()
     }
 }
 
@@ -100,7 +103,7 @@ impl<R: Read> Reader<R> {
         let mut elem = ReadElement {
             id: id,
             size: size,
-            children: HashMap::new(),
+            children: Vec::new(),
             data: element::Data(None),
         };
 
@@ -112,7 +115,7 @@ impl<R: Read> Reader<R> {
                     let (child, c) = self.read_element(true)?;
                     r += c;
 
-                    elem.children.insert(child.id(), child);
+                    elem.children.push(child);
                 }
 
                 count += r;
