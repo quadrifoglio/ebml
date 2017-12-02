@@ -108,16 +108,8 @@ impl<R: Read> Reader<R> {
 
                 count += r;
             } else {
-                let mut data = vec![0u8; size];
-                let c = self.reader.read(&mut data)?;
-
-                if c == 0 {
-                    bail!(ErrorKind::UnexpectedEof);
-                } else {
-                    count += c;
-                }
-
-                elem.data = element::Data(Some(data));
+                elem.data = self.read_data(size)?;
+                count += size;
             }
         }
 
@@ -191,6 +183,18 @@ impl<R: Read> Reader<R> {
         }
 
         Ok((value, count))
+    }
+
+    /// Read EBML element data.
+    pub fn read_data(&mut self, size: element::Size) -> Result<element::Data> {
+        let mut data = vec![0u8; size];
+        let c = self.reader.read(&mut data)?;
+
+        if c == 0 {
+            bail!(ErrorKind::UnexpectedEof);
+        }
+
+        Ok(element::Data(Some(data)))
     }
 }
 
