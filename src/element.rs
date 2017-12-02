@@ -17,15 +17,6 @@ pub mod types {
     pub type Utf8 = String;
 }
 
-/// Trait that must be implemented by all types that represent an EBML element.
-pub trait Element: Default {
-    /// Returns the ID of the EBML element.
-    fn id() -> Id;
-
-    /// Return wether this EBML element is a Master Element, i.e if it contains other EBML elements.
-    fn is_master() -> bool;
-}
-
 /// Represents data contained within an EBML element.
 #[derive(Clone)]
 pub struct Data(pub(crate) Option<Vec<u8>>);
@@ -97,65 +88,6 @@ impl Data {
             Ok(f64::from_bits(self.to_unsigned_int()?))
         } else {
             Err(ErrorKind::InvalidFloatSize.into())
-        }
-    }
-}
-
-#[macro_export]
-macro_rules! ebml_element_mandatory {
-    ($name:ident => $id:expr, $dt:ty) => {
-        #[derive(Default)]
-        pub struct $name($dt);
-
-        impl $crate::element::Element for $name {
-            fn id() -> $crate::element::Id {
-                $id
-            }
-
-            fn is_master() -> bool {
-                false
-            }
-        }
-    }
-}
-
-#[macro_export]
-macro_rules! ebml_element_default {
-    ($name:ident => $id:expr, $dt: ty, $def:expr) => {
-        pub struct $name($dt);
-
-        impl $crate::element::Element for $name {
-            fn id() -> $crate::element::Id {
-                $id
-            }
-
-            fn is_master() -> bool {
-                false
-            }
-        }
-
-        impl ::std::default::Default for $name {
-            fn default() -> Self {
-                $name($def)
-            }
-        }
-    }
-}
-
-#[macro_export]
-macro_rules! ebml_element_container {
-    ($name:ident => $id:expr) => {
-        #[derive(Default)]
-        pub struct $name;
-
-        impl $crate::element::Element for $name {
-            fn id() -> $crate::element::Id {
-                $id
-            }
-
-            fn is_master() -> bool {
-                true
-            }
         }
     }
 }

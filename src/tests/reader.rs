@@ -1,7 +1,6 @@
 use std::io::Cursor;
 
 use header;
-use element::Element;
 use reader::Reader;
 
 #[test]
@@ -14,18 +13,18 @@ fn ebml_header_sequential() {
     let mut r = Reader::from(data);
 
     let (elem, _) = r.read_element(false).unwrap();
-    assert_eq!(elem.id(), header::Root::id());
+    assert_eq!(elem.id(), header::EBML);
 
     let (elem, _) = r.read_element(true).unwrap();
-    assert_eq!(elem.id(), header::DocType::id());
+    assert_eq!(elem.id(), header::DOC_TYPE);
     assert_eq!(elem.data().to_utf8().unwrap().as_str(), "matroska");
 
     let (elem, _) = r.read_element(true).unwrap();
-    assert_eq!(elem.id(), header::DocTypeVersion::id());
+    assert_eq!(elem.id(), header::DOC_TYPE_VERSION);
     assert_eq!(elem.data().to_unsigned_int().unwrap(), 1 as u64);
 
     let (elem, _) = r.read_element(true).unwrap();
-    assert_eq!(elem.id(), header::DocTypeReadVersion::id());
+    assert_eq!(elem.id(), header::DOC_TYPE_READ_VERSION);
     assert_eq!(elem.data().to_unsigned_int().unwrap(), 1 as u64);
 }
 
@@ -39,14 +38,14 @@ fn ebml_header_children() {
     let mut r = Reader::from(data);
 
     let (header, _) = r.read_element(true).unwrap();
-    assert_eq!(header.id(), header::Root::id());
+    assert_eq!(header.id(), header::EBML);
 
-    let dt = header.find::<header::DocType>().unwrap();
+    let dt = header.find(header::DOC_TYPE).unwrap();
     assert_eq!(dt.data().to_utf8().unwrap().as_str(), "matroska");
 
-    let dt_version = header.find::<header::DocTypeVersion>().unwrap();
+    let dt_version = header.find(header::DOC_TYPE_VERSION).unwrap();
     assert_eq!(dt_version.data().to_unsigned_int().unwrap(), 1 as u64);
 
-    let dt_read_version = header.find::<header::DocTypeReadVersion>().unwrap();
+    let dt_read_version = header.find(header::DOC_TYPE_READ_VERSION).unwrap();
     assert_eq!(dt_read_version.data().to_unsigned_int().unwrap(), 1 as u64);
 }

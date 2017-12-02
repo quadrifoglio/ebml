@@ -1,10 +1,10 @@
 //! The module for the document reading & parsing functionality.
 
 use std::io::Read;
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use header;
-use element::{self, Element};
+use element;
 use error::{ErrorKind, Result};
 
 /// Represents a read EBML element.
@@ -28,9 +28,9 @@ impl ReadElement {
     }
 
     /// Try to find a specific element in this element's children and return a reference to it.
-    pub fn find<'a, E: Element>(&'a self) -> Option<&'a ReadElement> {
+    pub fn find<'a>(&'a self, elem: element::Id) -> Option<&'a ReadElement> {
         for child in &self.children {
-            if child.id == E::id() {
+            if child.id == elem {
                 return Some(child);
             }
         }
@@ -52,7 +52,7 @@ impl ReadElement {
 /// A document reader. Requires a `Read` object and streams EBML elements.
 pub struct Reader<R: Read> {
     reader: R,
-    elements: HashMap<element::Id, bool>,
+    master_elements: HashSet<element::Id>,
 }
 
 impl<R: Read> Reader<R> {
@@ -60,24 +60,17 @@ impl<R: Read> Reader<R> {
     fn new(reader: R) -> Reader<R> {
         let mut r = Reader {
             reader: reader,
-            elements: HashMap::new(),
+            master_elements: HashSet::new(),
         };
 
-        r.register::<header::Root>();
-        r.register::<header::Version>();
-        r.register::<header::ReadVersion>();
-        r.register::<header::MaxIdLength>();
-        r.register::<header::MaxSizeLength>();
-        r.register::<header::DocType>();
-        r.register::<header::DocTypeVersion>();
-        r.register::<header::DocTypeReadVersion>();
+        r.register_container(header::EBML);
 
         r
     }
 
-    /// Register a new EBML element that will be recognized by the `Reader` during parsing.
-    pub fn register<E: Element>(&mut self) {
-        self.elements.insert(E::id(), E::is_master());
+    /// Register a new EBML element as a container or Master Element (an element that contains child elements).
+    pub fn register_container(&mut self, master_id: element::Id) {
+        self.master_elements.insert(master_id);
     }
 
     /// Read an EBML element. If `handle_data` is set to false, then the data contained within the
@@ -95,11 +88,6 @@ impl<R: Read> Reader<R> {
         let id = id as element::Id;
         let size = size as element::Size;
 
-        let mut has_children = false;
-        if self.elements.contains_key(&id) {
-            has_children = self.elements[&id];
-        }
-
         let mut elem = ReadElement {
             id: id,
             size: size,
@@ -108,7 +96,7 @@ impl<R: Read> Reader<R> {
         };
 
         if handle_data {
-            if has_children {
+            if self.master_elements.contains(&id) {
                 let mut r = 0 as usize;
 
                 while r < size as usize {
