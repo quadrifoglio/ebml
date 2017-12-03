@@ -3,12 +3,31 @@
 use std::io::Read;
 
 use common::types::*;
-use common::ElementContent;
+use common::{Element, ElementContent};
 use error::{ErrorKind, Result};
+
+/// Read an entire EBML element.
+pub fn read_element<R: Read>(r: &mut R) -> Result<(Element, usize)> {
+    let mut count = 0 as usize;
+
+    let (id, size, c) = read_element_info(r)?;
+    count += c;
+
+    let (content, c) = read_element_data(r, size)?;
+    count += c;
+
+    let elem = Element {
+        id: id,
+        size: size,
+        content: content
+    };
+
+    Ok((elem, count))
+}
 
 /// Read the information about an EBML element. That information consists of an ID and the size of
 /// the data that the element contains.
-fn read_element_info<R: Read>(r: &mut R) -> Result<(ElementId, ElementSize, usize)> {
+pub fn read_element_info<R: Read>(r: &mut R) -> Result<(ElementId, ElementSize, usize)> {
     let mut count = 0 as usize;
 
     let (id, c) = read_vint(r, false)?;
@@ -21,7 +40,7 @@ fn read_element_info<R: Read>(r: &mut R) -> Result<(ElementId, ElementSize, usiz
 }
 
 /// Read the data contained in an EBML element.
-fn read_element_data<R: Read>(r: &mut R, size: ElementSize) -> Result<(ElementContent, usize)> {
+pub fn read_element_data<R: Read>(r: &mut R, size: ElementSize) -> Result<(ElementContent, usize)> {
     let mut buf = vec![0u8; size];
     let count = r.read(&mut buf)?;
 
@@ -32,7 +51,7 @@ fn read_element_data<R: Read>(r: &mut R, size: ElementSize) -> Result<(ElementCo
 /// then a mask operation will be applied so that the VINT length marker bits will not be
 /// interpreted in the resulting value. Returns the value and the amout of bytes that were
 /// read.
-fn read_vint<R: Read>(r: &mut R, do_mask: bool) -> Result<(SignedInt, usize)> {
+pub fn read_vint<R: Read>(r: &mut R, do_mask: bool) -> Result<(SignedInt, usize)> {
     let mut count = 0 as usize;
     let mut buf = [0u8; 1];
 

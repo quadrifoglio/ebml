@@ -1,5 +1,8 @@
 //! Common data types that are used throughout the library.
 
+use std::io::Cursor;
+
+use reader;
 use error::Result;
 
 /// All the data types defined by the EBML standard.
@@ -12,6 +15,29 @@ pub mod types {
 
     pub type ElementId = UnsignedInt;
     pub type ElementSize = usize;
+}
+
+pub struct Element {
+    pub(crate) id: types::ElementId,
+    pub(crate) size: types::ElementSize,
+    pub(crate) content: ElementContent,
+}
+
+impl Element {
+    /// Return the ID of the EBML element.
+    pub fn id(&self) -> types::ElementId {
+        self.id
+    }
+
+    /// Return the size of the element's content.
+    pub fn size(&self) -> types::ElementSize {
+        self.size
+    }
+
+    /// Returns the content of the EBML element. Consumes `self`.
+    pub fn content(self) -> ElementContent {
+        self.content
+    }
 }
 
 pub struct ElementContent(Vec<u8>);
@@ -60,5 +86,23 @@ impl ElementContent {
     /// valid UTF-8. Consumes `self`.
     pub fn into_utf8(self) -> Result<types::Utf8> {
         Ok(String::from_utf8(self.into_binary())?)
+    }
+
+    /// Interpret the element content as an array of children elements. Consumes `self`.
+    pub fn children(self) -> Result<Vec<Element>> {
+        let mut children = Vec::new();
+
+        let len = self.0.len();
+        let mut r = Cursor::new(self.0);
+        let mut count = 0 as usize;
+
+        while count < len {
+            let (elem, c) = reader::read_element(&mut r)?;
+            count += c;
+
+            children.push(elem);
+        }
+
+        Ok(children)
     }
 }
