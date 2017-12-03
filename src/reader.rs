@@ -1,1 +1,89 @@
 //! This module provides the functionality to read EBML documents.
+
+use std::io::Read;
+
+use common::types::*;
+use error::{ErrorKind, Result};
+
+/// Read the information about an EBML element. That information consists of an ID and the size of
+/// the data that the element contains.
+fn read_element_info<R: Read>(r: &mut R) -> Result<(ElementId, ElementSize, usize)> {
+    let mut count = 0 as usize;
+
+    let (id, c) = read_vint(r, false)?;
+    count += c;
+
+    let (size, c) = read_vint(r, true)?;
+    count += c;
+
+    Ok((id as ElementId, size as ElementSize, count))
+}
+
+/// Read an EBML variable size integer (also known as a VINT). If `do_mask` is set to true,
+/// then a mask operation will be applied so that the VINT length marker bits will not be
+/// interpreted in the resulting value. Returns the value and the amout of bytes that were
+/// read.
+fn read_vint<R: Read>(r: &mut R, do_mask: bool) -> Result<(SignedInt, usize)> {
+    let mut count = 0 as usize;
+    let mut buf = [0u8; 1];
+
+    count += r.read(&mut buf)?;
+    if count == 0 {
+        bail!(ErrorKind::UnexpectedEof);
+    }
+
+    let num = buf[0];
+    let mut mask = 0x7f;
+    let mut len = 1 as usize;
+
+    if (num & 0x80) != 0 {
+        len = 1;
+        mask = 0x7f;
+    } else if (num & 0x40) != 0 {
+        len = 2;
+        mask = 0x3f;
+    } else if (num & 0x20) != 0 {
+        len = 3;
+        mask = 0x1f;
+    } else if (num & 0x10) != 0 {
+        len = 4;
+        mask = 0x0f;
+    } else if (num & 0x08) != 0 {
+        len = 5;
+        mask = 0x07;
+    } else if (num & 0x04) != 0 {
+        len = 6;
+        mask = 0x03;
+    } else if (num & 0x02) != 0 {
+        len = 7;
+        mask = 0x01;
+    } else if (num & 0x01) != 0 {
+        len = 8;
+        mask = 0x00;
+    }
+
+    let mut value = 0 as i64;
+    let mut buf = vec![0u8; len];
+
+    if do_mask {
+        buf[0] = num & mask;
+    } else {
+        buf[0] = num;
+    }
+
+    if len > 1 {
+        let c = r.read(&mut buf[1..])?;
+
+        if c == 0 {
+            bail!(ErrorKind::UnexpectedEof);
+        } else {
+            count += c;
+        }
+    }
+
+    for i in 0..len {
+        value |= (buf[i] as i64) << ((len - i - 1) * 8);
+    }
+
+    Ok((value, count))
+}
