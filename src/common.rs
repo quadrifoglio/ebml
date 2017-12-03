@@ -127,4 +127,9 @@ impl ElementArray {
 
         elem
     }
+
+    /// Return the list of elements as a Vec. Consumes `self`.
+    pub fn vec(self) -> Vec<Element> {
+        self.0
+    }
 }
