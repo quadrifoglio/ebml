@@ -17,6 +17,7 @@ pub mod types {
     pub type ElementSize = usize;
 }
 
+/// Represents an EBML element, with its ID and content.
 pub struct Element {
     pub(crate) id: types::ElementId,
     pub(crate) size: types::ElementSize,
@@ -40,6 +41,7 @@ impl Element {
     }
 }
 
+/// EBML element content. Can be either raw user data, or other child EBML elements.
 pub struct ElementContent(Vec<u8>);
 
 impl ElementContent {
@@ -89,7 +91,7 @@ impl ElementContent {
     }
 
     /// Interpret the element content as an array of children elements. Consumes `self`.
-    pub fn children(self) -> Result<Vec<Element>> {
+    pub fn children(self) -> Result<ElementArray> {
         let mut children = Vec::new();
 
         let len = self.0.len();
@@ -103,6 +105,26 @@ impl ElementContent {
             children.push(elem);
         }
 
-        Ok(children)
+        Ok(ElementArray(children))
+    }
+}
+
+/// Represents a list of child EBML elements.
+pub struct ElementArray(Vec<Element>);
+
+impl ElementArray {
+    /// Find a specific element based on its ID, and return it. If found, the element is removed
+    /// from the list.
+    pub fn find(&mut self, id: types::ElementId) -> Option<Element> {
+        let mut elem = None;
+
+        for i in 0..self.0.len() {
+            if self.0.get(i).unwrap().id() == id {
+                elem = Some(self.0.remove(i));
+                break;
+            }
+        }
+
+        elem
     }
 }
