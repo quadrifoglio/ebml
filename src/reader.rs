@@ -3,6 +3,7 @@
 use std::io::Read;
 
 use common::types::*;
+use common::ElementContent;
 use error::{ErrorKind, Result};
 
 /// Read the information about an EBML element. That information consists of an ID and the size of
@@ -17,6 +18,14 @@ fn read_element_info<R: Read>(r: &mut R) -> Result<(ElementId, ElementSize, usiz
     count += c;
 
     Ok((id as ElementId, size as ElementSize, count))
+}
+
+/// Read the data contained in an EBML element.
+fn read_element_data<R: Read>(r: &mut R, size: ElementSize) -> Result<(ElementContent, usize)> {
+    let mut buf = vec![0u8; size];
+    let count = r.read(&mut buf)?;
+
+    Ok((ElementContent::new(buf), count))
 }
 
 /// Read an EBML variable size integer (also known as a VINT). If `do_mask` is set to true,
