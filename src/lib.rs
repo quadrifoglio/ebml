@@ -9,6 +9,7 @@ extern crate error_chain;
 pub mod error;
 pub mod common;
 pub mod reader;
+pub mod header;
 
 #[cfg(test)]
 mod tests;
