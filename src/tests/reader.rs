@@ -12,40 +12,27 @@ fn ebml_header_sequential() {
 
     let mut r = Reader::from(data);
 
-    let (elem, _) = r.read_element(false).unwrap();
-    assert_eq!(elem.id(), header::EBML);
+    let (root, _) = r.read_element().unwrap();
+    let mut count = 0 as usize;
 
-    let (elem, _) = r.read_element(true).unwrap();
-    assert_eq!(elem.id(), header::DOC_TYPE);
-    assert_eq!(elem.data().to_utf8().unwrap().as_str(), "matroska");
+    while count < root.size() {
+        let (child, c) = r.read_element().unwrap();
+        count += c;
 
-    let (elem, _) = r.read_element(true).unwrap();
-    assert_eq!(elem.id(), header::DOC_TYPE_VERSION);
-    assert_eq!(elem.data().to_unsigned_int().unwrap(), 1 as u64);
+        let data = r.read_element_data(child.size()).unwrap();
+        count += child.size();
 
-    let (elem, _) = r.read_element(true).unwrap();
-    assert_eq!(elem.id(), header::DOC_TYPE_READ_VERSION);
-    assert_eq!(elem.data().to_unsigned_int().unwrap(), 1 as u64);
-}
+        match child.id() {
+            header::VERSION => assert_eq!(data.to_unsigned_int().unwrap(), 1),
+            header::READ_VERSION => assert_eq!(data.to_unsigned_int().unwrap(), 1),
+            header::MAX_ID_LENGTH => assert_eq!(data.to_unsigned_int().unwrap(), 4),
+            header::MAX_SIZE_LENGTH => assert_eq!(data.to_unsigned_int().unwrap(), 8),
 
-#[test]
-fn ebml_header_children() {
-    let data = Cursor::new(vec![
-        0x1a, 0x45, 0xdf, 0xa3, 0x93, 0x42, 0x82, 0x88, 0x6d, 0x61, 0x74, 0x72, 0x6f, 0x73, 0x6b,
-        0x61, 0x42, 0x87, 0x81, 0x01, 0x42, 0x85, 0x81, 0x01,
-    ]);
+            header::DOC_TYPE => assert_eq!(data.to_utf8().unwrap().as_str(), "matroska"),
+            header::DOC_TYPE_VERSION => assert_eq!(data.to_unsigned_int().unwrap(), 1),
+            header::DOC_TYPE_READ_VERSION => assert_eq!(data.to_unsigned_int().unwrap(), 1),
 
-    let mut r = Reader::from(data);
-
-    let (header, _) = r.read_element(true).unwrap();
-    assert_eq!(header.id(), header::EBML);
-
-    let dt = header.find(header::DOC_TYPE).unwrap();
-    assert_eq!(dt.data().to_utf8().unwrap().as_str(), "matroska");
-
-    let dt_version = header.find(header::DOC_TYPE_VERSION).unwrap();
-    assert_eq!(dt_version.data().to_unsigned_int().unwrap(), 1 as u64);
-
-    let dt_read_version = header.find(header::DOC_TYPE_READ_VERSION).unwrap();
-    assert_eq!(dt_read_version.data().to_unsigned_int().unwrap(), 1 as u64);
+            _ => panic!("Unexpected EBML element: 0x{:X}", child.id()),
+        };
+    }
 }

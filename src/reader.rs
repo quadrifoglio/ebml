@@ -1,7 +1,6 @@
 //! The module for the document reading & parsing functionality.
 
 use std::io::Read;
-use std::collections::HashSet;
 
 use header;
 use element;
@@ -12,8 +11,6 @@ use error::{ErrorKind, Result};
 pub struct ReadElement {
     id: element::Id,
     size: element::Size,
-    children: Vec<ReadElement>,
-    data: element::Data,
 }
 
 impl ReadElement {
@@ -26,57 +23,29 @@ impl ReadElement {
     pub fn size(&self) -> element::Size {
         self.size
     }
-
-    /// Try to find a specific element in this element's children and return a reference to it.
-    pub fn find<'a>(&'a self, elem: element::Id) -> Option<&'a ReadElement> {
-        for child in &self.children {
-            if child.id == elem {
-                return Some(child);
-            }
-        }
-
-        None
-    }
-
-    /// Returns a reference to the data contained within this element.
-    pub fn data<'a>(&'a self) -> &'a element::Data {
-        &self.data
-    }
-
-    /// Consumes the element object to retreive its child elements.
-    pub fn children(self) -> Vec<ReadElement> {
-        self.children
-    }
 }
 
 /// A document reader. Requires a `Read` object and streams EBML elements.
 pub struct Reader<R: Read> {
     reader: R,
-    master_elements: HashSet<element::Id>,
 }
 
 impl<R: Read> Reader<R> {
     /// Create a new EBML `Reader` from a `Read` object.
     fn new(reader: R) -> Reader<R> {
-        let mut r = Reader {
+        Reader {
             reader: reader,
-            master_elements: HashSet::new(),
-        };
-
-        r.register_container(header::EBML);
-
-        r
+        }
     }
 
-    /// Register a new EBML element as a container or Master Element (an element that contains child elements).
-    pub fn register_container(&mut self, master_id: element::Id) {
-        self.master_elements.insert(master_id);
-    }
-
-    /// Read an EBML element. If `handle_data` is set to false, then the data contained within the
-    /// EBML element will be ignored. It must therefore be handled by the caller (be taken
-    /// off the input source) or subsequent calls to `read_element` will fail.
-    pub fn read_element(&mut self, handle_data: bool) -> Result<(ReadElement, usize)> {
+    /// Read an EBML element information. This function does not touch the element data, it only
+    /// reads the ID and the size. It it then up to the caller to call `read_element_data` to get
+    /// the element's data directly, or to call `read_element_info` again to interpret the
+    /// element's content as other child EBML elements. In that case, the caller must make sure not
+    /// to call `read_element` too much to not read passed the parent element's content. This is
+    /// way this function also returns the number of bytes read in order for it to be checked
+    /// against the parent element's size.
+    pub fn read_element(&mut self) -> Result<(ReadElement, usize)> {
         let mut count = 0 as usize;
 
         let (id, c) = self.read_vint(false)?;
@@ -88,30 +57,10 @@ impl<R: Read> Reader<R> {
         let id = id as element::Id;
         let size = size as element::Size;
 
-        let mut elem = ReadElement {
+        let elem = ReadElement {
             id: id,
             size: size,
-            children: Vec::new(),
-            data: element::Data(None),
         };
-
-        if handle_data {
-            if self.master_elements.contains(&id) {
-                let mut r = 0 as usize;
-
-                while r < size as usize {
-                    let (child, c) = self.read_element(true)?;
-                    r += c;
-
-                    elem.children.push(child);
-                }
-
-                count += r;
-            } else {
-                elem.data = self.read_data(size)?;
-                count += size;
-            }
-        }
 
         Ok((elem, count))
     }
@@ -185,8 +134,8 @@ impl<R: Read> Reader<R> {
         Ok((value, count))
     }
 
-    /// Read EBML element data.
-    pub fn read_data(&mut self, size: element::Size) -> Result<element::Data> {
+    /// Read EBML element data without interpreting it.
+    pub fn read_element_data(&mut self, size: element::Size) -> Result<element::Data> {
         let mut data = vec![0u8; size];
         let c = self.reader.read(&mut data)?;
 

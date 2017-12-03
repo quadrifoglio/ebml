@@ -6,6 +6,7 @@ extern crate ebml;
 
 use std::fs::File;
 
+use ebml::header;
 use ebml::reader::Reader;
 
 fn main() {
@@ -14,25 +15,27 @@ fn main() {
     let file = File::open(path).expect("Failed to open file");
     let mut reader = Reader::from(file);
 
-    let (header, _) = reader.read_element(true).unwrap();
+    let (root, _) = reader.read_element().unwrap();
+    let mut count = 0 as usize;
 
-    for value in header.children() {
-        match value.id() {
-            ebml::header::VERSION => {
-                println!("Version: {}", value.data().to_unsigned_int().unwrap())
-            }
+    while count < root.size() {
+        let (child, c) = reader.read_element().unwrap();
+        count += c;
 
-            ebml::header::MAX_ID_LENGTH => {
-                println!("MaxIDLength: {}", value.data().to_unsigned_int().unwrap())
-            }
+        let data = reader.read_element_data(child.size()).unwrap();
+        count += child.size();
 
-            ebml::header::MAX_SIZE_LENGTH => {
-                println!("MaxSizeLength: {}", value.data().to_unsigned_int().unwrap())
-            }
+        match child.id() {
+            header::VERSION => println!("EBMLVersion: {}", data.to_unsigned_int().unwrap()),
+            header::READ_VERSION => println!("EBMLReadVersion: {}", data.to_unsigned_int().unwrap()),
+            header::MAX_ID_LENGTH => println!("EBMLMaxIDLength: {}", data.to_unsigned_int().unwrap()),
+            header::MAX_SIZE_LENGTH => println!("EBMLMaxSizeLength: {}", data.to_unsigned_int().unwrap()),
 
-            ebml::header::DOC_TYPE => println!("EBML DocType: {}", value.data().to_utf8().unwrap()),
+            header::DOC_TYPE => println!("DocType: {}", data.to_utf8().unwrap().as_str()),
+            header::DOC_TYPE_VERSION => println!("DocTypeVersion: {}", data.to_unsigned_int().unwrap()),
+            header::DOC_TYPE_READ_VERSION => println!("DocTypeReadVersion: {}", data.to_unsigned_int().unwrap()),
 
-            _ => {}
-        }
+            _ => {},
+        };
     }
 }
