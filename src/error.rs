@@ -6,6 +6,11 @@ error_chain! {
             description("Unexpected end of file")
         }
 
+        ElementNotFound(el: u64) {
+            description("Required element not found"),
+            display("Required element '0x{:X}' not found", el),
+        }
+
         InvalidFloatSize {
             description("Invalid float size (expected 32 or 64 bits)")
         }

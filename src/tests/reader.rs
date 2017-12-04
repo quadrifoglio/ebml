@@ -12,25 +12,15 @@ fn ebml_header_oneshot() {
        0x61, 0x42, 0x87, 0x81, 0x01, 0x42, 0x85, 0x81, 0x01,
     ]);
 
-    let (root, _) = reader::read_element(&mut data).unwrap();
+    let (header, _) = reader::read_header(&mut data).unwrap();
 
-    for child in root.content().children().unwrap().vec() {
-        let id = child.id();
-        let data = child.content();
-
-        match id {
-            header::VERSION => assert_eq!(data.into_uint(), 1),
-            header::READ_VERSION => assert_eq!(data.into_uint(), 1),
-            header::MAX_ID_LENGTH => assert_eq!(data.into_uint(), 4),
-            header::MAX_SIZE_LENGTH => assert_eq!(data.into_uint(), 8),
-
-            header::DOC_TYPE => assert_eq!(data.into_utf8().unwrap().as_str(), "matroska"),
-            header::DOC_TYPE_VERSION => assert_eq!(data.into_uint(), 1),
-            header::DOC_TYPE_READ_VERSION => assert_eq!(data.into_uint(), 1),
-
-            _ => panic!("Unexpected EBML element"),
-        };
-    }
+    assert_eq!(header.version(), 1);
+    assert_eq!(header.read_version(), 1);
+    assert_eq!(header.max_id_length(), 4);
+    assert_eq!(header.max_size_length(), 8);
+    assert_eq!(header.doc_type(), "matroska");
+    assert_eq!(header.doc_type_version(), 1);
+    assert_eq!(header.doc_type_read_version(), 1);
 }
 
 #[test]

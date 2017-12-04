@@ -3,8 +3,41 @@
 use std::io::Read;
 
 use common::types::*;
+use header::{self, Header};
 use common::{Element, ElementContent};
-use error::{ErrorKind, Result};
+use error::{Error, ErrorKind, Result};
+
+/// Read the standard EBML header.
+pub fn read_header<R: Read>(r: &mut R) -> Result<(Header, usize)> {
+    let mut header = Header::default();
+
+    let (elem, c) = read_element(r)?;
+    let mut root = elem.content().children()?;
+
+    header.version = root.find(header::VERSION)
+        .map_or(1, |elem| elem.content().into_uint());
+
+    header.read_version = root.find(header::READ_VERSION)
+        .map_or(1, |elem| elem.content().into_uint());
+
+    header.max_id_length = root.find(header::MAX_ID_LENGTH)
+        .map_or(4, |elem| elem.content().into_uint());
+
+    header.max_size_length = root.find(header::MAX_SIZE_LENGTH)
+        .map_or(8, |elem| elem.content().into_uint());
+
+    header.doc_type = root.find(header::DOC_TYPE)
+        .ok_or(Error::from(ErrorKind::ElementNotFound(header::DOC_TYPE)))?
+        .content().into_utf8()?;
+
+    header.doc_type_version = root.find(header::DOC_TYPE_VERSION)
+        .map_or(1, |elem| elem.content().into_uint());
+
+    header.doc_type_read_version = root.find(header::DOC_TYPE_READ_VERSION)
+        .map_or(1, |elem| elem.content().into_uint());
+
+    Ok((header, c))
+}
 
 /// Read an entire EBML element.
 pub fn read_element<R: Read>(r: &mut R) -> Result<(Element, usize)> {
