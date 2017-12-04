@@ -3,7 +3,7 @@
 use std::io::Cursor;
 
 use reader;
-use error::Result;
+use error::{ErrorKind, Result};
 
 /// All the data types defined by the EBML standard.
 pub mod types {
@@ -80,8 +80,14 @@ impl ElementContent {
     }
 
     /// Interpret the element content as a floating point number. Consumes `self`.
-    pub fn into_float(self) -> types::Float {
-        f64::from_bits(self.into_uint())
+    pub fn into_float(self) -> Result<types::Float> {
+        if self.0.len() == 4 {
+            Ok(f32::from_bits(self.into_uint() as u32) as f64)
+        } else if self.0.len() == 8 {
+            Ok(f64::from_bits(self.into_uint()))
+        } else {
+            bail!(ErrorKind::InvalidFloatSize);
+        }
     }
 
     /// Interpret the element content as an UTF-8 string. Can return an error if the data in not
