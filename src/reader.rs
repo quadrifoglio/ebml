@@ -2,9 +2,9 @@
 
 use std::io::Read;
 
-use common::types::*;
+use ::types::*;
+use ::{Element, ElementContent};
 use header::{self, Header};
-use common::{Element, ElementContent};
 use error::{Error, ErrorKind, Result};
 
 /// Read the standard EBML header.

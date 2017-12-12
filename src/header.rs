@@ -1,6 +1,6 @@
 //! EBML Header data types.
 
-use common::types::*;
+use ::types::*;
 
 pub const EBML: UnsignedInt = 0x1a45dfa3;
 pub const VERSION: UnsignedInt = 0x4286;
