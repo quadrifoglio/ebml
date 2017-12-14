@@ -7,7 +7,7 @@ use ::{Element, ElementContent};
 use header::{self, Header};
 use error::{Error, ErrorKind, Result};
 
-/// Read the standard EBML header.
+/// Read the standard EBML header. Returns the parsed header and the number of bytes that were read.
 pub fn read_header<R: Read>(r: &mut R) -> Result<(Header, usize)> {
     let mut header = Header::default();
 
@@ -39,14 +39,16 @@ pub fn read_header<R: Read>(r: &mut R) -> Result<(Header, usize)> {
     Ok((header, c))
 }
 
-/// Read an entire EBML element.
+/// Read an entire EBML element, including its content. Be careful when using this function, since
+/// it will read into memory the entirety of the data. Returns the parsed element and the number
+/// of bytes that were read.
 pub fn read_element<R: Read>(r: &mut R) -> Result<(Element, usize)> {
     let mut count = 0 as usize;
 
     let (id, size, c) = read_element_info(r)?;
     count += c;
 
-    let (content, c) = read_element_data(r, size)?;
+    let (content, c) = read_element_content(r, size)?;
     count += c;
 
     let elem = Element {
@@ -59,7 +61,7 @@ pub fn read_element<R: Read>(r: &mut R) -> Result<(Element, usize)> {
 }
 
 /// Read the information about an EBML element. That information consists of an ID and the size of
-/// the data that the element contains.
+/// the element's content in bytes. Also returns the number of bytes that were read.
 pub fn read_element_info<R: Read>(r: &mut R) -> Result<(ElementId, ElementSize, usize)> {
     let mut count = 0 as usize;
 
@@ -72,8 +74,10 @@ pub fn read_element_info<R: Read>(r: &mut R) -> Result<(ElementId, ElementSize, 
     Ok((id as ElementId, size as ElementSize, count))
 }
 
-/// Read the data contained in an EBML element.
-pub fn read_element_data<R: Read>(r: &mut R, size: ElementSize) -> Result<(ElementContent, usize)> {
+/// Read the content of an EBML element. This content can either be just data or other child EBML
+/// elements. Returns the element content and the number of bytes that were read (should be the
+/// same as value as the specified size).
+pub fn read_element_content<R: Read>(r: &mut R, size: ElementSize) -> Result<(ElementContent, usize)> {
     let mut buf = vec![0u8; size];
     let count = r.read(&mut buf)?;
 
