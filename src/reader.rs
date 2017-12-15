@@ -88,7 +88,7 @@ pub fn read_element_content<R: Read>(r: &mut R, size: ElementSize) -> Result<(El
 /// then a mask operation will be applied so that the VINT length marker bits will not be
 /// interpreted in the resulting value. Returns the value and the amout of bytes that were
 /// read.
-pub fn read_vint<R: Read>(r: &mut R, do_mask: bool) -> Result<(SignedInt, usize)> {
+pub fn read_vint<R: Read>(r: &mut R, do_mask: bool) -> Result<(UnsignedInt, usize)> {
     let mut count = 0 as usize;
     let mut buf = [0u8; 1];
 
@@ -127,7 +127,7 @@ pub fn read_vint<R: Read>(r: &mut R, do_mask: bool) -> Result<(SignedInt, usize)
         mask = 0x00;
     }
 
-    let mut value = 0 as i64;
+    let mut value = 0 as u64;
     let mut buf = vec![0u8; len];
 
     if do_mask {
@@ -147,7 +147,7 @@ pub fn read_vint<R: Read>(r: &mut R, do_mask: bool) -> Result<(SignedInt, usize)
     }
 
     for i in 0..len {
-        value |= (buf[i] as i64) << ((len - i - 1) * 8);
+        value |= (buf[i] as u64) << ((len - i - 1) * 8);
     }
 
     Ok((value, count))
